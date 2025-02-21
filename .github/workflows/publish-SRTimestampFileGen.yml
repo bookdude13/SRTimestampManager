@@ -24,12 +24,15 @@ jobs:
           # See https://learn.microsoft.com/en-us/dotnet/core/rid-catalog#known-rids
           - os: windows-latest
             build_target: win-x64
+            artifact_extension: .exe
           - os: macos-latest
             build_target: osx-x64
+            artifact_extension: ''
 #          - os: macos-latest
 #            build_target: osx-arm64
           - os: ubuntu-latest
             build_target: linux-x64
+            artifact_extension: ''
 #          - os: ubuntu-latest
 #            build_target: linux-arm64
 
@@ -56,15 +59,10 @@ jobs:
     - name: dotnet publish
       run: dotnet publish -c Release --self-contained -r ${{ matrix.build_target }} -o './publish/App_Data/Jobs/Triggered/${{ env.PROJECT_NAME }}-${{ matrix.build_target }}' ${{ env.PROJECT_ROOT }}
     
-    # Rename exe
+    # Rename artifact
     - name: Rename Output .exe
       shell: pwsh # Supported on all platforms
-      run: Move-Item -Path './publish/App_Data/Jobs/Triggered/${{ env.PROJECT_NAME }}-${{ matrix.build_target }}/${{ env.PROJECT_NAME }}.exe' -Destination './publish/App_Data/Jobs/Triggered/${{ env.PROJECT_NAME }}-${{ matrix.build_target }}/${{ env.PROJECT_NAME }}_${{ matrix.build_target }}.exe'
-      
-    # Rename non-exe
-    - name: Rename Output 'nix
-      shell: pwsh # Supported on all platforms
-      run: Move-Item -Path './publish/App_Data/Jobs/Triggered/${{ env.PROJECT_NAME }}-${{ matrix.build_target }}/${{ env.PROJECT_NAME }}' -Destination './publish/App_Data/Jobs/Triggered/${{ env.PROJECT_NAME }}-${{ matrix.build_target }}/${{ env.PROJECT_NAME }}_${{ matrix.build_target }}'
+      run: Move-Item -Path './publish/App_Data/Jobs/Triggered/${{ env.PROJECT_NAME }}-${{ matrix.build_target }}/${{ env.PROJECT_NAME }}${{ matrix.artifact_extension }}' -Destination './publish/App_Data/Jobs/Triggered/${{ env.PROJECT_NAME }}-${{ matrix.build_target }}/${{ env.PROJECT_NAME }}_${{ matrix.build_target }}${{ matrix.artifact_extension }}'
     
     # Upload
     - name: Upload
