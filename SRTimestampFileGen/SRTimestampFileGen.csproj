@@ -12,8 +12,6 @@
     <AssemblyVersion>1.0.0</AssemblyVersion>
     <FileVersion>1.0.0</FileVersion>
     <SignAssembly>False</SignAssembly>
-    <AssemblyOriginatorKeyFile>SRTimestampFileGen_key.snk</AssemblyOriginatorKeyFile>
-    <PublicSign>true</PublicSign>
   </PropertyGroup>
 
   <ItemGroup>
