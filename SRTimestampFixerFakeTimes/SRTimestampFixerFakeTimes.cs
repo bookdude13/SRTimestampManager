@@ -1,8 +1,8 @@
 ﻿using SRTimestampLib;
 
-namespace SRTimestampFixer
+namespace SRTimestampFixerFakeTimes
 {
-    internal class SRTimestampFixer
+    internal class SRTimestampFixerFakeTimes
     {
         static async Task Main(string[] args)
         {
@@ -26,12 +26,10 @@ namespace SRTimestampFixer
 
             // Initialize
             await customFileManager.Initialize();
-            var localMappings = customFileManager.GetLocalTimestampMappings();
-
-            logger.DebugLog($"{localMappings.MapTimestamps.Count} mappings found");
-
-            // Apply saved timestamp values to all local files
-            customFileManager.ApplyLocalMappings(localMappings);
+            
+            // Alternative, apply timestamps based on ids
+            logger.DebugLog("Using map IDs as fake timestamps for ordering");
+            customFileManager.ApplyTimestampsFromIds();
         }
     }
 }
