@@ -4,6 +4,8 @@ namespace SRTimestampFixer
 {
     internal class SRTimestampFixer
     {
+        private const bool USE_FAKE_TIMESTAMP_IDS = true;
+        
         static async Task Main(string[] args)
         {
             var logger = new SRLogHandler();
@@ -26,12 +28,22 @@ namespace SRTimestampFixer
 
             // Initialize
             await customFileManager.Initialize();
-            var localMappings = customFileManager.GetLocalTimestampMappings();
 
-            logger.DebugLog($"{localMappings.MapTimestamps.Count} mappings found");
+            if (USE_FAKE_TIMESTAMP_IDS)
+            {
+                // Alternative, apply timestamps based on ids
+                logger.DebugLog("Using map IDs as fake timestamps for ordering");
+                customFileManager.ApplyTimestampsFromIds();
+            }
+            else
+            {
+                var localMappings = customFileManager.GetLocalTimestampMappings();
 
-            // Apply to all local files
-            customFileManager.ApplyLocalMappings(localMappings);
+                logger.DebugLog($"{localMappings.MapTimestamps.Count} mappings found");
+
+                // Apply saved timestamp values to all local files
+                customFileManager.ApplyLocalMappings(localMappings);
+            }
         }
     }
 }

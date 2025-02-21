@@ -13,15 +13,17 @@ namespace SRTimestampLib
         private SRLogHandler logger;
 
         [JsonProperty]
-        private List<MapZMetadata> localMapMetadata = new List<MapZMetadata>();
+        private List<MapZMetadata> localMapMetadata = new();
+        
+        public List<MapZMetadata> GetLocalMapsCopy() => new(localMapMetadata);
 
         [JsonIgnore]
         /// Faster lookup of maps by path
-        private Dictionary<string, MapZMetadata> localMapPathLookup = new Dictionary<string, MapZMetadata>();
+        private Dictionary<string, MapZMetadata> localMapPathLookup = new();
 
         [JsonIgnore]
         /// Faster lookup of maps by hash
-        private Dictionary<string, MapZMetadata> localMapHashLookup = new Dictionary<string, MapZMetadata>();
+        private Dictionary<string, MapZMetadata> localMapHashLookup = new();
 
 
         public LocalDatabase(SRLogHandler logger)

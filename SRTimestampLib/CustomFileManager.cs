@@ -326,6 +326,32 @@ namespace SRTimestampLib
         }
 
         /// <summary>
+        /// Use the local song info to generate a fake, but ordered, timestamp based on the song's id.
+        /// Ending timestamp is Jan 2, 2019 (before any maps were uploaded) + id minutes
+        /// </summary>
+        public void ApplyTimestampsFromIds()
+        {
+            var localMaps = db.GetLocalMapsCopy();
+            
+            // Use Jan 2, 2019 so that time offsets at most go to Jan 1 and not a diff year,
+            // and so Windows actually shows the timestamp since it's sane/recent
+            var startTime = new DateTime(2019, 1, 2);
+            
+            foreach (var map in localMaps)
+            {
+                var fileName = Path.GetFileNameWithoutExtension(map.FilePath);
+
+                // Skip drafts
+                if (fileName.StartsWith("DRAFT"))
+                    continue;
+                
+                var fakeTimestamp = startTime + TimeSpan.FromMinutes(map.id);
+                logger.DebugLog($"Song {fileName}, id {map.id}, fake time {fakeTimestamp}");
+                FileUtils.TrySetDateModifiedUtc(map.FilePath, fakeTimestamp, logger);
+            }
+        }
+
+        /// <summary>
         /// Since the Z site is currently down, use this method to generate a local file that can be used initially to fix map timestamps.
         /// </summary>
         public void RefreshLocalMapTimestampMapping()
