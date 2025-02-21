@@ -1,7 +1,7 @@
 # Assumes that generated files are single-file, i.e.
 # in the csproj file, <PublishSingleFile>true</PublishSingleFile> is set.
 
-name: Publish SRTimestampFileGen
+name: Publish SRTimestampFixer
 
 on:
   workflow_dispatch:
@@ -12,8 +12,8 @@ on:
     branches: [ "main" ]
     
 env:
-  PROJECT_NAME: SRTimestampFileGen
-  PROJECT_ROOT: ./SRTimestampFileGen
+  PROJECT_NAME: SRTimestampFixer
+  PROJECT_ROOT: ./SRTimestampFixer
   DOTNET_VERSION: '8.0.x'
 
 jobs:
