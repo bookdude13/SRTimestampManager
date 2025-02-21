@@ -2,8 +2,6 @@ using System.IO.Compression;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SRTimestampLib.Models;
-using SharpCompress.Readers;
-using SharpCompress.Common;
 
 namespace SRTimestampLib
 {
@@ -11,8 +9,6 @@ namespace SRTimestampLib
     {
         public SRLogHandler logger;
         public LocalDatabase db;
-
-        private bool isMovingFiles = false;
 
         private readonly string MAP_EXTENSION = ".synth";
         private readonly HashSet<string> STAGE_EXTENSIONS = new()
@@ -48,52 +44,6 @@ namespace SRTimestampLib
         }
 
         public string[] GetCustomMapPaths() => GetSynthriderzMapFiles(FileUtils.CustomSongsPath);
-
-        /// Useful for debugging. Clear out all custom songs
-        //public async void DeleteCustomSongs()
-        //{
-        //    try
-        //    {
-        //        var mapFiles = GetCustomMapPaths();
-        //        logger.DebugLog($"Deleting {mapFiles.Length} files...");
-        //        foreach (var filePath in mapFiles)
-        //        {
-        //            File.Delete(filePath);
-        //        }
-        //    }
-        //    catch (System.Exception e)
-        //    {
-        //        logger.ErrorLog($"Failed to delete files: {e.Message}");
-        //    }
-
-        //    await RefreshLocalDatabase(FileUtils.synthCustomContentDir);
-        //}
-
-        //public void StartMoveDownloadedFiles()
-        //{
-        //    StartCoroutine(MoveDownloadedFiles());
-        //}
-
-        /// Returns list of all zip files downloaded from synthriderz.com located in the given directory.
-        /// If none found or error occurs, returns empty array
-        private string[] GetSynthriderzZipFiles(string rootDirectory)
-        {
-            try
-            {
-                var directoryExists = Directory.Exists(rootDirectory);
-                logger.DebugLog($"Getting zip files from {rootDirectory}. Directory exists? {directoryExists}");
-                if (directoryExists)
-                {
-                    return Directory.GetFiles(rootDirectory, "*synthriderz-beatmaps.zip");
-                }
-            }
-            catch (System.Exception e)
-            {
-                logger.ErrorLog("Failed to get files: " + e.Message);
-            }
-
-            return new string[] { };
-        }
 
         /// Returns list of all maps downloaded from synthriderz.com located in the given directory.
         /// If none found or error occurs, returns empty array
@@ -162,77 +112,6 @@ namespace SRTimestampLib
             }
 
             return new string[] { };
-        }
-
-        /// Extracts custom content from a Synthriderz zip file to their respective directories.
-        /// zipPath is the path to the zip file
-        /// synthDirectory is the path to the root Synth Riders directory for custom content (i.e. SynthRidersUC)
-        /// TODO add decals and profiles
-        private void ExtractSynthriderzZip(string zipPath, string synthDirectory)
-        {
-            if (!File.Exists(zipPath))
-            {
-                logger.ErrorLog($"File {zipPath} doesn't exist! Not extracting");
-                return;
-            }
-
-            if (!Directory.Exists(synthDirectory))
-            {
-                logger.ErrorLog($"Destination {synthDirectory} doesn't exist!");
-                return;
-            }
-
-            try
-            {
-                var extractionOptions = new ExtractionOptions()
-                {
-                    ExtractFullPath = false,
-                    Overwrite = true,
-                    PreserveAttributes = true,
-                    PreserveFileTime = true,
-                };
-
-                using (var stream = File.OpenRead(zipPath))
-                using (var reader = ReaderFactory.Open(stream))
-                {
-                    while (reader.MoveToNextEntry())
-                    {
-                        if (!reader.Entry.IsDirectory)
-                        {
-                            var filePath = reader.Entry.Key;
-                            var fileName = Path.GetFileName(filePath);
-                            var fileExtension = Path.GetExtension(fileName);
-
-                            string destPath = null;
-                            if (fileExtension == MAP_EXTENSION)
-                            {
-                                // Ignore position within zip file - if it's the right extension, put it in the custom dir directly
-                                destPath = Path.Join(synthDirectory, "CustomSongs", fileName);
-                            }
-                            else if (STAGE_EXTENSIONS.Contains(fileExtension))
-                            {
-                                // Ignore position within zip file - if it's the right extension, put it in the custom dir directly
-                                destPath = Path.Join(synthDirectory, "CustomStages", fileName);
-                            }
-                            else if (fileExtension == PLAYLIST_EXTENSION)
-                            {
-                                // Ignore position within zip file - if it's the right extension, put it in the custom dir directly
-                                destPath = Path.Join(synthDirectory, "CustomPlaylists", fileName);
-                            }
-
-                            if (destPath != null)
-                            {
-                                logger.DebugLog($"Extracting {filePath} to {destPath}");
-                                reader.WriteEntryToFile(destPath, extractionOptions);
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("Failed to extract zip: " + e.Message);
-            }
         }
 
         /// Returns a new list with all maps in the source list that aren't contained in the user's custom song directory already
@@ -432,7 +311,7 @@ namespace SRTimestampLib
 
                     if (FileUtils.TrySetDateModifiedUtc(localMap.FilePath, dateModifiedUtc, logger))
                     {
-                        //logger.DebugLog($"Updated date modified for {localMap.FilePath} {localMap.hash}");
+                        logger.DebugLog($"Updated date modified for {Path.GetFileNameWithoutExtension(localMap.FilePath)} to {dateModifiedUtc}");
                     }
                     else
                     {
