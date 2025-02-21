@@ -275,7 +275,7 @@ namespace SRTimestampLib
                 return mappings;
             }
 
-            var localTimestampMapping = JsonConvert.DeserializeObject<List<MapTimestamp>>(File.ReadAllText(localTimestampMapFile));
+            var localTimestampMapping = JsonConvert.DeserializeObject<List<MapItem>>(File.ReadAllText(localTimestampMapFile));
             if (localTimestampMapping == null || localTimestampMapping.Count == 0)
             {
                 logger.ErrorLog("Failed to read mappings from file!");

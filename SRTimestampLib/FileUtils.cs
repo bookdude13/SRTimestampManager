@@ -38,7 +38,6 @@ namespace SRTimestampLib
         public static string SynthCustomContentDir => !string.IsNullOrEmpty(OverrideSynthCustomContentDir) ? OverrideSynthCustomContentDir : GetDefaultSynthCustomContentDir();
 #endif
 
-        //public static string MappingFilePath => Path.Combine(GetPersistentFolder(), "timestampMapping.json");
         public static string MappingFilePath => Path.Combine(".", "sr_timestamp_mapping.json");
 
         public static string CustomSongsPath => Path.Join(SynthCustomContentDir, "CustomSongs");
