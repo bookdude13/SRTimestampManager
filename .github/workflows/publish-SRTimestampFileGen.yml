@@ -11,7 +11,6 @@ on:
 env:
 #  SOLUTION_NAME: SRTimestampManager.sln
   PROJECT_NAME: SRTimestampFileGen
-  WEBJOB_NAME: SRTimestampFileGen-Win64
   PROJECT_ROOT: ./SRTimestampFileGen
 #  TEST_PROJECT_ROOT: ./SRTimestampFileGenTest
   DOTNET_VERSION: '8.0.x'
@@ -59,14 +58,16 @@ jobs:
 
     # Publish
     - name: dotnet publish
-      run: dotnet publish -c Release --self-contained -r ${{ matrix.build_target }} -o './publish/App_Data/Jobs/Triggered/${{ env.WEBJOB_NAME }}' ${{ env.PROJECT_ROOT }}
+      run: dotnet publish -c Release --self-contained -r ${{ matrix.build_target }} -o './publish/App_Data/Jobs/Triggered/${{ env.WEBJOB_NAME }}-${{ matrix.build_target }}' ${{ env.PROJECT_ROOT }}
       
     # Upload
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.PROJECT_NAME }}-${{ matrix.artifact_suffix }}
-        path: ./publish/App_Data/Jobs/Triggered/${{ env.WEBJOB_NAME }}/${{ env.PROJECT_NAME }}-${{ matrix.artifact_suffix }}
+        name: ${{ env.PROJECT_NAME }}-${{ matrix.build_target }}
+        path: |
+          ./publish/App_Data/Jobs/Triggered/${{ env.WEBJOB_NAME }}-${{ matrix.build_target }}/*
+          !./publish/**/*.pdb
         overwrite: true
         if-no-files-found: 'error'
         retention-days: 1 # This is meant for me to download and set up a release, not long-term downloading
