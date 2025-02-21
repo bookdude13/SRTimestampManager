@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Newtonsoft.Json;
 
 namespace SRTimestampLib.Models
 {
@@ -11,10 +10,14 @@ namespace SRTimestampLib.Models
     {
         public List<MapItem> MapTimestamps = new();
 
+        [JsonIgnore]
         private Dictionary<string, DateTime> _hashToDateModifiedUtc = new();
 
         public void Add(MapItem mapTimestamp)
         {
+            if (string.IsNullOrEmpty(mapTimestamp.hash))
+                return;
+            
             MapTimestamps.Add(mapTimestamp);
 
             // Convert to DateTime for easier comparison/use in other APIs

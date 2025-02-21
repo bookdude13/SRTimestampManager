@@ -17,12 +17,12 @@ namespace SRTimestampLib
         
         public List<MapZMetadata> GetLocalMapsCopy() => new(localMapMetadata);
 
-        [JsonIgnore]
         /// Faster lookup of maps by path
+        [JsonIgnore]
         private Dictionary<string, MapZMetadata> localMapPathLookup = new();
 
-        [JsonIgnore]
         /// Faster lookup of maps by hash
+        [JsonIgnore]
         private Dictionary<string, MapZMetadata> localMapHashLookup = new();
 
 
@@ -33,7 +33,7 @@ namespace SRTimestampLib
 
         /// Gets locally stored metadata based on file path.
         /// Returns null if not found
-        public MapZMetadata GetFromPath(string filePath)
+        public MapZMetadata? GetFromPath(string filePath)
         {
             if (localMapPathLookup.ContainsKey(filePath))
             {
@@ -45,7 +45,7 @@ namespace SRTimestampLib
 
         /// Gets locally stored metadata based on map hash.
         /// Returns null if not found
-        public MapZMetadata GetFromHash(string hash)
+        public MapZMetadata? GetFromHash(string hash)
         {
             if (localMapHashLookup.ContainsKey(hash))
             {
@@ -118,7 +118,7 @@ namespace SRTimestampLib
             };
 
             logger.DebugLog("Loading database...");
-            LocalDatabase localDb = await FileUtils.ReadFileJson<LocalDatabase>(GetDbPath(), logger);
+            LocalDatabase? localDb = await FileUtils.ReadFileJson<LocalDatabase>(GetDbPath(), logger);
             if (localDb == null)
             {
                 logger.ErrorLog("Failed to load local database!");

@@ -119,7 +119,7 @@ namespace SRTimestampLib
 
         /// Reads file contents and parses into given type. Assumes json input.
         /// Returns null on failure.
-        public static async Task<T> ReadFileJson<T>(string filePath, SRLogHandler logger)
+        public static async Task<T?> ReadFileJson<T>(string filePath, SRLogHandler logger)
         {
             try
             {
@@ -127,7 +127,7 @@ namespace SRTimestampLib
                 using (BufferedStream bufferedStream = new BufferedStream(stream))
                 using (System.IO.StreamReader sr = new System.IO.StreamReader(bufferedStream))
                 {
-                    T metadata = JsonConvert.DeserializeObject<T>(await sr.ReadToEndAsync());
+                    var metadata = JsonConvert.DeserializeObject<T>(await sr.ReadToEndAsync());
                     return metadata;
                 }
             }

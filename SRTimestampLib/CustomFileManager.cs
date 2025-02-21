@@ -27,13 +27,13 @@ namespace SRTimestampLib
 
         public async Task Initialize()
         {
-            await RefreshLocalDatabase(FileUtils.SynthCustomContentDir);
+            await RefreshLocalDatabase();
         }
 
         /// Parses the map at the given path and adds it to the collection
         public async void AddLocalMap(string mapPath, MapItem mapFromZ)
         {
-            MapZMetadata metadata = await ParseLocalMap(mapPath, mapFromZ);
+            var metadata = await ParseLocalMap(mapPath, mapFromZ);
             if (metadata == null)
             {
                 logger.ErrorLog("Failed to parse map at " + mapPath);
@@ -118,12 +118,12 @@ namespace SRTimestampLib
         public List<MapItem> FilterOutExistingMaps(List<MapItem> maps)
         {
             logger.DebugLog($"{db.GetNumberOfMaps()} local maps found");
-            return maps.Where(mapItem => db.GetFromHash(mapItem.hash) == null).ToList();
+            return maps.Where(mapItem => !string.IsNullOrEmpty(mapItem.hash) && db.GetFromHash(mapItem.hash) == null).ToList();
         }
 
         /// Refreshes local database metadata. Parses all missing custom map files.
         /// This saves the updated database.
-        private async Task RefreshLocalDatabase(string synthCustomContentDir)
+        private async Task RefreshLocalDatabase()
         {
             var localHashes = new HashSet<string>();
 
@@ -146,7 +146,7 @@ namespace SRTimestampLib
                 int totalFiles = files.Length;
                 foreach (var filePath in files)
                 {
-                    MapZMetadata dbMetadata = db.GetFromPath(filePath);
+                    var dbMetadata = db.GetFromPath(filePath);
                     if (dbMetadata != null)
                     {
                         // DB has this version already - good to go
@@ -156,7 +156,7 @@ namespace SRTimestampLib
                     else
                     {
                         // DB doesn't have this version; parse and add
-                        MapZMetadata metadata = await ParseLocalMap(filePath);
+                        var metadata = await ParseLocalMap(filePath);
                         if (metadata == null)
                         {
                             logger.ErrorLog("Failed to parse map at " + filePath);
@@ -198,7 +198,7 @@ namespace SRTimestampLib
         }
 
         /// Parses local map file. Returns null if can't parse or no metadata
-        private async Task<MapZMetadata> ParseLocalMap(string filePath, MapItem mapFromZ = null)
+        private async Task<MapZMetadata?> ParseLocalMap(string filePath, MapItem? mapFromZ = null)
         {
             var metadataFileName = "synthriderz.meta.json";
             try
@@ -213,9 +213,12 @@ namespace SRTimestampLib
                         {
                             using (System.IO.StreamReader sr = new System.IO.StreamReader(entry.Open()))
                             {
-                                MapZMetadata metadata = JsonConvert.DeserializeObject<MapZMetadata>(await sr.ReadToEndAsync());
-                                metadata.FilePath = filePath;
-                                return metadata;
+                                MapZMetadata? metadata = JsonConvert.DeserializeObject<MapZMetadata>(await sr.ReadToEndAsync());
+                                if (metadata != null)
+                                {
+                                    metadata.FilePath = filePath;
+                                    return metadata;
+                                }
                             }
                         }
                     }
@@ -299,6 +302,9 @@ namespace SRTimestampLib
         {
             foreach (var mapping in mappings.MapTimestamps)
             {
+                if (string.IsNullOrEmpty(mapping.hash))
+                    continue;
+                
                 // If we have a local file for this mapping, apply the fix
                 var localMap = db.GetFromHash(mapping.hash);
                 if (localMap != null)
