@@ -11,13 +11,37 @@ namespace SRTimestampLib
 #if ANDROID
         public readonly static string synthCustomContentDir = "/sdcard/SynthRidersUC/";
 #else
-        public readonly static string synthCustomContentDir = @"C:\Program Files (x86)\Steam\steamapps\common\SynthRiders\SynthRidersUC\";
+        private static string GetDefaultSynthCustomContentDir()
+        {
+            if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+            {
+                return @"C:\Program Files (x86)\Steam\steamapps\common\SynthRiders\SynthRidersUC\";
+            }
+
+            if (Environment.OSVersion.Platform == PlatformID.MacOSX)
+            {
+                var relativePath = "~/Library/Application Support/Steam/steamapps/common/SynthRiders/SynthRidersUC/";
+                return Path.GetFullPath(relativePath);
+            }
+
+            if (Environment.OSVersion.Platform == PlatformID.Unix)
+            {
+                var relativePath = "~/.steam/steam/steamapps/common/SynthRiders/SynthRidersUC/";
+                return Path.GetFullPath(relativePath);
+            }
+
+            Debug.LogError("Unknown platform " + Environment.OSVersion.Platform);
+            return "/sdcard/SynthRidersUC";
+        }
+
+        public static string OverrideSynthCustomContentDir = "";
+        public static string SynthCustomContentDir => !string.IsNullOrEmpty(OverrideSynthCustomContentDir) ? OverrideSynthCustomContentDir : GetDefaultSynthCustomContentDir();
 #endif
 
         //public static string MappingFilePath => Path.Combine(GetPersistentFolder(), "timestampMapping.json");
         public static string MappingFilePath => Path.Combine(".", "sr_timestamp_mapping.json");
 
-        public static string CustomSongsPath => Path.Join(synthCustomContentDir, "CustomSongs");
+        public static string CustomSongsPath => Path.Join(SynthCustomContentDir, "CustomSongs");
 
         public static string TempPath => Path.GetTempPath();
 

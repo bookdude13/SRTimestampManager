@@ -27,7 +27,7 @@ namespace SRTimestampLib
 
         public async Task Initialize()
         {
-            await RefreshLocalDatabase(FileUtils.synthCustomContentDir);
+            await RefreshLocalDatabase(FileUtils.SynthCustomContentDir);
         }
 
         /// Parses the map at the given path and adds it to the collection

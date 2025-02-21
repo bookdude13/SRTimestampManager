@@ -7,8 +7,22 @@ namespace SRTimestampFixer
         static async Task Main(string[] args)
         {
             var logger = new SRLogHandler();
+            
+            // If we have an override for the synth directory, use that
+            if (args.Length > 0)
+            {
+                var synthDir = args[0];
+                Debug.Log($"Override synth dir is '{synthDir}'");
+                if (!Directory.Exists(synthDir))
+                {
+                    Debug.LogError($"Override synth dir '{synthDir}' doesn't exist!");
+                    return;
+                }
+
+                FileUtils.OverrideSynthCustomContentDir = Path.GetFullPath(synthDir);
+            }
+            
             var customFileManager = new CustomFileManager(logger);
-            //var downloadManager = new DownloadManager(logger, customFileManager);
 
             // Initialize
             await customFileManager.Initialize();
