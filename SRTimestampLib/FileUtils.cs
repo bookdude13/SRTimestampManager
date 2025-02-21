@@ -4,10 +4,34 @@ using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
-namespace SRTimestampFileGenerator
+namespace SRTimestampLib
 {
     public static class FileUtils
     {
+#if ANDROID
+        public readonly static string synthCustomContentDir = "/sdcard/SynthRidersUC/";
+#else
+        public readonly static string synthCustomContentDir = @"C:\Program Files (x86)\Steam\steamapps\common\SynthRiders\SynthRidersUC\";
+#endif
+
+        //public static string MappingFilePath => Path.Combine(GetPersistentFolder(), "timestampMapping.json");
+        public static string MappingFilePath => Path.Combine(".", "sr_timestamp_mapping.json");
+
+        public static string CustomSongsPath => Path.Join(synthCustomContentDir, "CustomSongs");
+
+        public static string TempPath => Path.GetTempPath();
+
+        public static string GetPersistentFolder()
+        {
+            var localAppData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
+            var persistentDir = Path.Combine(localAppData, "SRTimestampFileGenerator");
+
+            // Ensure it exists!
+            Directory.CreateDirectory(persistentDir);
+
+            return persistentDir;
+        }
+
         /// Attempts to move a file, overwriting if dstPath already exists.
         /// Returns true if it succeeded, false if it failed.
         public static bool MoveFileOverwrite(string srcPath, string destPath, SRLogHandler logger)
@@ -95,7 +119,7 @@ namespace SRTimestampFileGenerator
 
         /// Sets file times to the given dateModified time, assuming UTC time.
         /// Return true if updated, false if error
-        public static bool SetDateModifiedUtc(string filePath, DateTime dateModifiedUtc, SRLogHandler logger)
+        public static bool TrySetDateModifiedUtc(string filePath, DateTime dateModifiedUtc, SRLogHandler logger)
         {
             try
             {
