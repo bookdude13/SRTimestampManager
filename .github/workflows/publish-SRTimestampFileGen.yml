@@ -54,17 +54,17 @@ jobs:
 
     # Publish
     - name: dotnet publish
-      run: dotnet publish -c Release --self-contained -r ${{ matrix.build_target }} -o './publish/App_Data/Jobs/Triggered/${{ env.WEBJOB_NAME }}-${{ matrix.build_target }}' ${{ env.PROJECT_ROOT }}
+      run: dotnet publish -c Release --self-contained -r ${{ matrix.build_target }} -o './publish/App_Data/Jobs/Triggered/${{ env.PROJECT_NAME }}-${{ matrix.build_target }}' ${{ env.PROJECT_ROOT }}
     
     # Rename exe
     - name: Rename Output .exe
       shell: pwsh # Supported on all platforms
-      run: Move-Item -Path './publish/App_Data/Jobs/Triggered/${{ env.WEBJOB_NAME }}-${{ matrix.build_target }}/${{ env.PROJECT_NAME }}.exe' -Destination './publish/App_Data/Jobs/Triggered/${{ env.WEBJOB_NAME }}-${{ matrix.build_target }}/${{ env.PROJECT_NAME }}_${{ matrix.build_target }}.exe'
+      run: Move-Item -Path './publish/App_Data/Jobs/Triggered/${{ env.PROJECT_NAME }}-${{ matrix.build_target }}/${{ env.PROJECT_NAME }}.exe' -Destination './publish/App_Data/Jobs/Triggered/${{ env.PROJECT_NAME }}-${{ matrix.build_target }}/${{ env.PROJECT_NAME }}_${{ matrix.build_target }}.exe'
       
     # Rename non-exe
     - name: Rename Output 'nix
       shell: pwsh # Supported on all platforms
-      run: Move-Item -Path './publish/App_Data/Jobs/Triggered/${{ env.WEBJOB_NAME }}-${{ matrix.build_target }}/${{ env.PROJECT_NAME }}' -Destination './publish/App_Data/Jobs/Triggered/${{ env.WEBJOB_NAME }}-${{ matrix.build_target }}/${{ env.PROJECT_NAME }}_${{ matrix.build_target }}'
+      run: Move-Item -Path './publish/App_Data/Jobs/Triggered/${{ env.PROJECT_NAME }}-${{ matrix.build_target }}/${{ env.PROJECT_NAME }}' -Destination './publish/App_Data/Jobs/Triggered/${{ env.PROJECT_NAME }}-${{ matrix.build_target }}/${{ env.PROJECT_NAME }}_${{ matrix.build_target }}'
     
     # Upload
     - name: Upload
@@ -72,7 +72,7 @@ jobs:
       with:
         name: ${{ env.PROJECT_NAME }}-${{ matrix.build_target }}
         path: |
-          ./publish/App_Data/Jobs/Triggered/${{ env.WEBJOB_NAME }}-${{ matrix.build_target }}/*
+          ./publish/App_Data/Jobs/Triggered/${{ env.PROJECT_NAME }}-${{ matrix.build_target }}/*
           !./publish/**/*.pdb
         overwrite: true
         if-no-files-found: 'error'
