@@ -1,4 +1,4 @@
-name: Publish .NET Core Win64
+name: Publish SRTimestampFileGen
 
 on:
   workflow_dispatch:
@@ -18,22 +18,18 @@ env:
 jobs:
 
   build:
-
     strategy:
       matrix:
         include:
           # See https://learn.microsoft.com/en-us/dotnet/core/rid-catalog#known-rids
           - os: windows-latest
             build_target: win-x64
-            artifact_suffix: win-x64.exe
           - os: macos-latest
             build_target: osx-x64
-            artifact_suffix: osx-x64
 #          - os: macos-latest
 #            build_target: osx-arm64
           - os: ubuntu-latest
             build_target: linux-x64
-            artifact_suffix: linux-x64
 #          - os: ubuntu-latest
 #            build_target: linux-arm64
 
@@ -59,7 +55,17 @@ jobs:
     # Publish
     - name: dotnet publish
       run: dotnet publish -c Release --self-contained -r ${{ matrix.build_target }} -o './publish/App_Data/Jobs/Triggered/${{ env.WEBJOB_NAME }}-${{ matrix.build_target }}' ${{ env.PROJECT_ROOT }}
+    
+    # Rename exe
+    - name: Rename Output .exe
+      shell: pwsh # Supported on all platforms
+      run: Move-Item -Path './publish/App_Data/Jobs/Triggered/${{ env.WEBJOB_NAME }}-${{ matrix.build_target }}/${{ env.PROJECT_NAME }}.exe' -Destination './publish/App_Data/Jobs/Triggered/${{ env.WEBJOB_NAME }}-${{ matrix.build_target }}/${{ env.PROJECT_NAME }}_${{ matrix.build_target }}.exe'
       
+    # Rename non-exe
+    - name: Rename Output 'nix
+      shell: pwsh # Supported on all platforms
+      run: Move-Item -Path './publish/App_Data/Jobs/Triggered/${{ env.WEBJOB_NAME }}-${{ matrix.build_target }}/${{ env.PROJECT_NAME }}' -Destination './publish/App_Data/Jobs/Triggered/${{ env.WEBJOB_NAME }}-${{ matrix.build_target }}/${{ env.PROJECT_NAME }}_${{ matrix.build_target }}'
+    
     # Upload
     - name: Upload
       uses: actions/upload-artifact@v4
@@ -71,3 +77,23 @@ jobs:
         overwrite: true
         if-no-files-found: 'error'
         retention-days: 1 # This is meant for me to download and set up a release, not long-term downloading
+  
+#  assemble-release:
+#    runs-on: ubuntu-latest
+#    needs: build
+#    steps:
+#      - name: Get win-x64
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: ${{ env.PROJECT_NAME }}-win-x64
+#          merge-multiple: true
+#      - name: Get osx-x64
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: ${{ env.PROJECT_NAME }}-osx-x64
+#          merge-multiple: true
+#      - name: Get osx-x64
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: ${{ env.PROJECT_NAME }}-osx-x64
+#          merge-multiple: true
