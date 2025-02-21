@@ -4,6 +4,8 @@
 .vs/
 .idea/
 
+/builds/
+
 # User-specific files
 *.suo
 *.user

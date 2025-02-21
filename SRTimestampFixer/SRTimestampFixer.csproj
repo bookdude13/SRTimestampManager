@@ -2,9 +2,17 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <PublishSingleFile>true</PublishSingleFile>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Title>SRTimestampFixer</Title>
+    <Authors>bookdude13</Authors>
+    <RepositoryUrl>https://github.com/bookdude13/SRTimestampManager</RepositoryUrl>
+    <AssemblyVersion>1.0.0</AssemblyVersion>
+    <FileVersion>1.0.0</FileVersion>
+    <SignAssembly>False</SignAssembly>
+    <PublicSign>true</PublicSign>
   </PropertyGroup>
 
   <ItemGroup>
