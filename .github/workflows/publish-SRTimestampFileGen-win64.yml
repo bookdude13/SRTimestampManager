@@ -53,9 +53,9 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    # Add  MSBuild to the PATH: https://github.com/microsoft/setup-msbuild
-    - name: Setup MSBuild.exe
-      uses: microsoft/setup-msbuild@v2
+#    # Add  MSBuild to the PATH: https://github.com/microsoft/setup-msbuild
+#    - name: Setup MSBuild.exe
+#      uses: microsoft/setup-msbuild@v2
 
     # Publish
     - name: dotnet publish
