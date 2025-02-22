@@ -140,7 +140,7 @@ namespace SRTimestampLib
                 var mapsDir = FileUtils.CustomSongsPath;
                 if (!Directory.Exists(mapsDir))
                 {
-                    logger.ErrorLog("Custom maps directory doesn't exist! Creating...");
+                    logger.ErrorLog($"Custom maps directory doesn't exist at {mapsDir}! Creating...");
                     Directory.CreateDirectory(mapsDir);
                 }
 

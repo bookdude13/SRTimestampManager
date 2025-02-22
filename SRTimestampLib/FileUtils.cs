@@ -8,7 +8,8 @@ namespace SRTimestampLib
 {
     public static class FileUtils
     {
-#if ANDROID
+        // Hardcoded expected path for Android builds, but let the editor (and other console apps) try to figure it out
+#if UNITY_ANDROID && !UNITY_EDITOR
         public readonly static string SynthCustomContentDir = "/sdcard/SynthRidersUC/";
 #else
         private static string GetDefaultSynthCustomContentDir()
