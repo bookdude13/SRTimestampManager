@@ -203,7 +203,7 @@ namespace SRTimestampLib
         }
 
         /// Parses local map file. Returns null if can't parse or no metadata
-        private async Task<MapZMetadata> ParseLocalMap(string filePath, MapItem? mapFromZ = null)
+        private async Task<MapZMetadata?> ParseLocalMap(string filePath, MapItem? mapFromZ = null)
         {
             var metadataFileName = "synthriderz.meta.json";
             try
