@@ -9,7 +9,7 @@ namespace SRTimestampLib
     public static class FileUtils
     {
 #if ANDROID
-        public readonly static string synthCustomContentDir = "/sdcard/SynthRidersUC/";
+        public readonly static string SynthCustomContentDir = "/sdcard/SynthRidersUC/";
 #else
         private static string GetDefaultSynthCustomContentDir()
         {
@@ -38,14 +38,27 @@ namespace SRTimestampLib
         public static string SynthCustomContentDir => !string.IsNullOrEmpty(OverrideSynthCustomContentDir) ? OverrideSynthCustomContentDir : GetDefaultSynthCustomContentDir();
 #endif
 
-        public static string MappingFilePath => Path.Combine(".", "sr_timestamp_mapping.json");
+        public static string MappingFilePath
+        {
+            get { return Path.Combine(".", "sr_timestamp_mapping.json"); }
+        }
 
         public static string CustomSongsPath => Path.Join(SynthCustomContentDir, "CustomSongs");
 
-        public static string TempPath => Path.GetTempPath();
+        public static string TempPath
+        {
+#if UNITY_2021_3_OR_NEWER
+            get { return UnityEngine.Application.temporaryCachePath; }
+#else
+            get { return Path.GetTempPath(); }
+#endif
+        }
 
         public static string GetPersistentFolder()
         {
+#if UNITY_2021_3_OR_NEWER
+            return UnityEngine.Application.persistentDataPath;
+#else
             var localAppData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
             var persistentDir = Path.Combine(localAppData, "SRTimestampFileGenerator");
 
@@ -53,6 +66,7 @@ namespace SRTimestampLib
             Directory.CreateDirectory(persistentDir);
 
             return persistentDir;
+#endif
         }
 
         /// Attempts to move a file, overwriting if dstPath already exists.
@@ -133,7 +147,7 @@ namespace SRTimestampLib
             }
             catch (System.Exception e)
             {
-                logger.ErrorLog($"Failed to parse local map {filePath}: {e.Message}");
+                logger.ErrorLog($"Failed to parse local map {Path.GetFileNameWithoutExtension(filePath)}: {e.Message}");
             }
 
             return default(T);

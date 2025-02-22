@@ -41,7 +41,7 @@ namespace SRTimestampLib
             var metadata = await ParseLocalMap(mapPath, mapFromZ);
             if (metadata == null)
             {
-                logger.ErrorLog("Failed to parse map at " + mapPath);
+                logger.ErrorLog("Failed to parse map " + Path.GetFileNameWithoutExtension(mapPath));
                 return;
             }
 
@@ -52,7 +52,7 @@ namespace SRTimestampLib
 
         /// Returns list of all maps downloaded from synthriderz.com located in the given directory.
         /// If none found or error occurs, returns empty array
-        private string[] GetSynthriderzMapFiles(string rootDirectory)
+        public string[] GetSynthriderzMapFiles(string rootDirectory)
         {
             try
             {
@@ -73,7 +73,7 @@ namespace SRTimestampLib
 
         /// Returns list of all stages downloaded from synthriderz.com located in the given directory.
         /// If none found or error occurs, returns empty array
-        private string[] GetSynthriderzStageFiles(string rootDirectory)
+        public string[] GetSynthriderzStageFiles(string rootDirectory)
         {
             try
             {
@@ -99,7 +99,7 @@ namespace SRTimestampLib
 
         /// Returns list of all playlists downloaded from synthriderz.com located in the given directory.
         /// If none found or error occurs, returns empty array
-        private string[] GetSynthriderzPlaylistFiles(string rootDirectory)
+        public string[] GetSynthriderzPlaylistFiles(string rootDirectory)
         {
             try
             {
@@ -128,7 +128,7 @@ namespace SRTimestampLib
 
         /// Refreshes local database metadata. Parses all missing custom map files.
         /// This saves the updated database.
-        private async Task RefreshLocalDatabase()
+        public async Task RefreshLocalDatabase()
         {
             var localHashes = new HashSet<string>();
 
@@ -164,7 +164,7 @@ namespace SRTimestampLib
                         var metadata = await ParseLocalMap(filePath);
                         if (metadata == null)
                         {
-                            logger.ErrorLog("Failed to parse map at " + filePath);
+                            logger.ErrorLog("Failed to parse map " + Path.GetFileNameWithoutExtension(filePath));
                             continue;
                         }
 
@@ -261,7 +261,7 @@ namespace SRTimestampLib
             }
             catch (System.Exception e)
             {
-                logger.ErrorLog($"Failed to parse local map {filePath}: {e.Message}");
+                logger.ErrorLog($"Failed to parse local map {Path.GetFileNameWithoutExtension(filePath)}: {e.Message}");
             }
 
             return null;
