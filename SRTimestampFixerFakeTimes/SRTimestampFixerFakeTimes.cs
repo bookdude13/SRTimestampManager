@@ -1,7 +1,10 @@
-﻿using SRTimestampLib;
+﻿using System.IO;
+using System.Threading.Tasks;
+using SRTimestampLib;
 
 namespace SRTimestampFixerFakeTimes
 {
+#if !UNITY_2021_3_OR_NEWER // Ignore in Unity
     internal class SRTimestampFixerFakeTimes
     {
         static async Task Main(string[] args)
@@ -32,4 +35,5 @@ namespace SRTimestampFixerFakeTimes
             customFileManager.ApplyTimestampsFromIds();
         }
     }
+#endif
 }

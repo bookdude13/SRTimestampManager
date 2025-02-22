@@ -30,7 +30,7 @@ namespace SRTimestampLib
                 return Path.GetFullPath(relativePath);
             }
 
-            Debug.LogError("Unknown platform " + Environment.OSVersion.Platform);
+            // Debug.LogError("Unknown platform " + Environment.OSVersion.Platform);
             return "/sdcard/SynthRidersUC";
         }
 

@@ -1,7 +1,10 @@
-﻿using SRTimestampLib;
+﻿using System.IO;
+using System.Threading.Tasks;
+using SRTimestampLib;
 
 namespace SRTimestampFixer
 {
+#if !UNITY_2021_3_OR_NEWER // Ignore in Unity
     internal class SRTimestampFixer
     {
         static async Task Main(string[] args)
@@ -34,4 +37,5 @@ namespace SRTimestampFixer
             customFileManager.ApplyLocalMappings(localMappings);
         }
     }
+#endif
 }

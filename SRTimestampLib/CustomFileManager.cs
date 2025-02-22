@@ -1,4 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.IO.Compression;
+using System.Linq;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SRTimestampLib.Models;
@@ -198,7 +203,7 @@ namespace SRTimestampLib
         }
 
         /// Parses local map file. Returns null if can't parse or no metadata
-        private async Task<MapZMetadata?> ParseLocalMap(string filePath, MapItem? mapFromZ = null)
+        private async Task<MapZMetadata> ParseLocalMap(string filePath, MapItem? mapFromZ = null)
         {
             var metadataFileName = "synthriderz.meta.json";
             try
