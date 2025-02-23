@@ -176,12 +176,20 @@ namespace SRTimestampLib
                     }
 
                     count++;
+                    
+                    // Don't hog main thread
+                    if (count % 20 == 0)
+                    {
+                        await Task.Yield();
+                    }
+                    
                     if (count % 100 == 0)
                     {
                         logger.DebugLog($"Processed {count}/{totalFiles}...");
 
                         // Save partial progress; ignore errors
                         await db.Save();
+                        await Task.Yield();
                     }
                 }
                 logger.DebugLog($"{totalFiles} local files processed");
