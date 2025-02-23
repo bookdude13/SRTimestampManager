@@ -8,6 +8,9 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SRTimestampLib.Models;
 
+// Avoid annoying warnings in Unity
+#nullable enable
+
 namespace SRTimestampLib
 {
     public class CustomFileManager
@@ -36,7 +39,7 @@ namespace SRTimestampLib
         }
 
         /// Parses the map at the given path and adds it to the collection
-        public async void AddLocalMap(string mapPath, MapItem mapFromZ)
+        public async Task AddLocalMap(string mapPath, MapItem mapFromZ)
         {
             var metadata = await ParseLocalMap(mapPath, mapFromZ);
             if (metadata == null)
@@ -322,7 +325,7 @@ namespace SRTimestampLib
 
                     if (FileUtils.TrySetDateModifiedUtc(localMap.FilePath, dateModifiedUtc, logger))
                     {
-                        logger.DebugLog($"Updated date modified for {Path.GetFileNameWithoutExtension(localMap.FilePath)} to {dateModifiedUtc}");
+                        // logger.DebugLog($"Updated date modified for {Path.GetFileNameWithoutExtension(localMap.FilePath)} to {dateModifiedUtc}");
                     }
                     else
                     {

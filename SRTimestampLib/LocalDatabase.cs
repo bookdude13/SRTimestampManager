@@ -5,6 +5,9 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using SRTimestampLib.Models;
 
+// Avoid annoying warnings in Unity
+#nullable enable
+
 namespace SRTimestampLib
 {
     [Serializable]

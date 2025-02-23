@@ -1,3 +1,6 @@
+// Avoid annoying warnings in Unity
+#nullable enable
+
 namespace SRTimestampLib.Models
 {
     public class User

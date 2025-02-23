@@ -4,6 +4,9 @@ using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
+// Avoid annoying warnings in Unity
+#nullable enable
+
 namespace SRTimestampLib
 {
     public static class FileUtils

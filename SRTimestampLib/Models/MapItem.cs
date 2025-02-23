@@ -1,6 +1,9 @@
 using System;
 using Newtonsoft.Json;
 
+// Avoid annoying warnings in Unity
+#nullable enable
+
 namespace SRTimestampLib.Models
 {
     public class MapItem
