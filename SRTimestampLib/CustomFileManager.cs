@@ -306,12 +306,15 @@ namespace SRTimestampLib
         /// Applies the given timestamp corrections to all found local files.
         /// </summary>
         /// <param name="mappings"></param>
-        public void ApplyLocalMappings(LocalMapTimestampMappings mappings)
+        public async Task ApplyLocalMappings(LocalMapTimestampMappings mappings)
         {
+            var numProcessed = 0;
             foreach (var mapping in mappings.MapTimestamps)
             {
                 if (string.IsNullOrEmpty(mapping.hash))
                     continue;
+                
+                numProcessed++;
                 
                 // If we have a local file for this mapping, apply the fix
                 var localMap = db.GetFromHash(mapping.hash);
@@ -335,6 +338,18 @@ namespace SRTimestampLib
                 else
                 {
                     //logger.DebugLog("No local map found for mapping " + mapping.hash);
+                }
+                
+                // Don't hog the main thread
+                if (numProcessed % 20 == 0)
+                {
+                    await Task.Yield();
+                }
+                
+                // Let user know work is being done
+                if (numProcessed % 100 == 0)
+                {
+                    logger.DebugLog($"Processed {numProcessed}/{mappings.MapTimestamps.Count}...");
                 }
             }
         }
