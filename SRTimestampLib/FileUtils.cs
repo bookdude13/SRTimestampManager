@@ -48,7 +48,7 @@ namespace SRTimestampLib
         }
 
         public static string CustomSongsPath => Path.Join(SynthCustomContentDir, "CustomSongs");
-        public static string SynthDBPath => Path.GetFullPath(Path.Join(SynthCustomContentDir, "..", "SynthDB"));
+        public static string SynthDBPath => Path.GetFullPath(Path.Join(SynthCustomContentDir, "SynthDB"));
 
         public static string TempPath
         {
