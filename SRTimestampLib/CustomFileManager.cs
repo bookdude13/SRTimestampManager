@@ -1,7 +1,16 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.IO.Compression;
+using System.Linq;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using SQLite;
 using SRTimestampLib.Models;
+
+// Avoid annoying warnings in Unity
+#nullable enable
 
 namespace SRTimestampLib
 {
@@ -31,12 +40,12 @@ namespace SRTimestampLib
         }
 
         /// Parses the map at the given path and adds it to the collection
-        public async void AddLocalMap(string mapPath, MapItem mapFromZ)
+        public async Task AddLocalMap(string mapPath, MapItem mapFromZ)
         {
             var metadata = await ParseLocalMap(mapPath, mapFromZ);
             if (metadata == null)
             {
-                logger.ErrorLog("Failed to parse map at " + mapPath);
+                logger.ErrorLog("Failed to parse map " + Path.GetFileNameWithoutExtension(mapPath));
                 return;
             }
 
@@ -47,7 +56,7 @@ namespace SRTimestampLib
 
         /// Returns list of all maps downloaded from synthriderz.com located in the given directory.
         /// If none found or error occurs, returns empty array
-        private string[] GetSynthriderzMapFiles(string rootDirectory)
+        public string[] GetSynthriderzMapFiles(string rootDirectory)
         {
             try
             {
@@ -68,7 +77,7 @@ namespace SRTimestampLib
 
         /// Returns list of all stages downloaded from synthriderz.com located in the given directory.
         /// If none found or error occurs, returns empty array
-        private string[] GetSynthriderzStageFiles(string rootDirectory)
+        public string[] GetSynthriderzStageFiles(string rootDirectory)
         {
             try
             {
@@ -94,7 +103,7 @@ namespace SRTimestampLib
 
         /// Returns list of all playlists downloaded from synthriderz.com located in the given directory.
         /// If none found or error occurs, returns empty array
-        private string[] GetSynthriderzPlaylistFiles(string rootDirectory)
+        public string[] GetSynthriderzPlaylistFiles(string rootDirectory)
         {
             try
             {
@@ -123,7 +132,7 @@ namespace SRTimestampLib
 
         /// Refreshes local database metadata. Parses all missing custom map files.
         /// This saves the updated database.
-        private async Task RefreshLocalDatabase()
+        public async Task RefreshLocalDatabase()
         {
             var localHashes = new HashSet<string>();
 
@@ -135,7 +144,7 @@ namespace SRTimestampLib
                 var mapsDir = FileUtils.CustomSongsPath;
                 if (!Directory.Exists(mapsDir))
                 {
-                    logger.ErrorLog("Custom maps directory doesn't exist! Creating...");
+                    logger.ErrorLog($"Custom maps directory doesn't exist at {mapsDir}! Creating...");
                     Directory.CreateDirectory(mapsDir);
                 }
 
@@ -159,7 +168,7 @@ namespace SRTimestampLib
                         var metadata = await ParseLocalMap(filePath);
                         if (metadata == null)
                         {
-                            logger.ErrorLog("Failed to parse map at " + filePath);
+                            logger.ErrorLog("Failed to parse map " + Path.GetFileNameWithoutExtension(filePath));
                             continue;
                         }
 
@@ -168,12 +177,20 @@ namespace SRTimestampLib
                     }
 
                     count++;
+                    
+                    // Don't hog main thread
+                    if (count % 20 == 0)
+                    {
+                        await Task.Yield();
+                    }
+                    
                     if (count % 100 == 0)
                     {
                         logger.DebugLog($"Processed {count}/{totalFiles}...");
 
                         // Save partial progress; ignore errors
                         await db.Save();
+                        await Task.Yield();
                     }
                 }
                 logger.DebugLog($"{totalFiles} local files processed");
@@ -256,7 +273,7 @@ namespace SRTimestampLib
             }
             catch (System.Exception e)
             {
-                logger.ErrorLog($"Failed to parse local map {filePath}: {e.Message}");
+                logger.ErrorLog($"Failed to parse local map {Path.GetFileNameWithoutExtension(filePath)}: {e.Message}");
             }
 
             return null;
@@ -298,12 +315,15 @@ namespace SRTimestampLib
         /// Applies the given timestamp corrections to all found local files.
         /// </summary>
         /// <param name="mappings"></param>
-        public void ApplyLocalMappings(LocalMapTimestampMappings mappings)
+        public async Task ApplyLocalMappings(LocalMapTimestampMappings mappings)
         {
+            var numProcessed = 0;
             foreach (var mapping in mappings.MapTimestamps)
             {
                 if (string.IsNullOrEmpty(mapping.hash))
                     continue;
+                
+                numProcessed++;
                 
                 // If we have a local file for this mapping, apply the fix
                 var localMap = db.GetFromHash(mapping.hash);
@@ -317,7 +337,7 @@ namespace SRTimestampLib
 
                     if (FileUtils.TrySetDateModifiedUtc(localMap.FilePath, dateModifiedUtc, logger))
                     {
-                        logger.DebugLog($"Updated date modified for {Path.GetFileNameWithoutExtension(localMap.FilePath)} to {dateModifiedUtc}");
+                        // logger.DebugLog($"Updated date modified for {Path.GetFileNameWithoutExtension(localMap.FilePath)} to {dateModifiedUtc}");
                     }
                     else
                     {
@@ -328,7 +348,21 @@ namespace SRTimestampLib
                 {
                     //logger.DebugLog("No local map found for mapping " + mapping.hash);
                 }
+                
+                // Don't hog the main thread
+                if (numProcessed % 20 == 0)
+                {
+                    await Task.Yield();
+                }
+                
+                // Let user know work is being done
+                if (numProcessed % 100 == 0)
+                {
+                    logger.DebugLog($"Processed {numProcessed}/{mappings.MapTimestamps.Count}...");
+                }
             }
+            
+            logger.DebugLog("Finished applying local timestamp mappings");
         }
 
         /// <summary>
@@ -379,6 +413,64 @@ namespace SRTimestampLib
             {
                 logger.ErrorLog("Failed to write timestamp mapping: " + e.Message);
             }
+        }
+        
+        /// <summary>
+        /// Updates the SynthDB file with timestamp info for each of the given maps
+        /// </summary>
+        /// <param name="localMaps"></param>
+        public async Task UpdateSynthDBTimestamps(List<MapZMetadata> localMaps)
+        {
+            logger.DebugLog("Updating SynthDB timestamps...");
+            var synthDbPath = FileUtils.SynthDBPath;
+
+            SQLiteConnection conn;
+            SQLiteCommand cmdUpdateTime;
+            try
+            {
+                conn = new SQLiteConnection($"{synthDbPath}", SQLiteOpenFlags.ReadWrite);
+                cmdUpdateTime = conn.CreateCommand(
+                        @"UPDATE TracksCache SET date_created = @date_created WHERE leaderboard_hash = @leaderboard_hash");
+            }
+            catch (Exception e)
+            {
+                logger.ErrorLog(e.Message);
+                return;
+            }
+
+            var numProcessed = 0;
+            foreach (var map in localMaps)
+            {
+                var lastWriteTimeUtc = File.GetLastWriteTimeUtc(map.FilePath);
+                int secSinceEpoch = (int)(lastWriteTimeUtc - DateTime.UnixEpoch).TotalSeconds;
+
+                try
+                {
+                    cmdUpdateTime.Bind("@date_created", secSinceEpoch);
+                    cmdUpdateTime.Bind("@leaderboard_hash", map.hash);
+
+                    cmdUpdateTime.ExecuteNonQuery();
+                    numProcessed++;
+                }
+                catch (Exception e)
+                {
+                    logger.ErrorLog(e.Message);
+                }
+
+                // Don't hog the main thread
+                if (numProcessed % 20 == 0)
+                {
+                    await Task.Yield();
+                }
+                
+                // Let the user know work is being done
+                if (numProcessed % 100 == 0)
+                {
+                    logger.DebugLog($"  {numProcessed} / {localMaps.Count} processed");
+                }
+            }
+            
+            logger.DebugLog("Finished updating SynthDB");
         }
 
         private List<MapTimestamp> GetLocalMapTimestamps()

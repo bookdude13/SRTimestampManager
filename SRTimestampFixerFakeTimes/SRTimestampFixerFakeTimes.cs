@@ -1,7 +1,10 @@
-﻿using SRTimestampLib;
+﻿using System.IO;
+using System.Threading.Tasks;
+using SRTimestampLib;
 
 namespace SRTimestampFixerFakeTimes
 {
+#if !UNITY_2021_3_OR_NEWER // Ignore in Unity
     internal class SRTimestampFixerFakeTimes
     {
         static async Task Main(string[] args)
@@ -30,6 +33,9 @@ namespace SRTimestampFixerFakeTimes
             // Alternative, apply timestamps based on ids
             logger.DebugLog("Using map IDs as fake timestamps for ordering");
             customFileManager.ApplyTimestampsFromIds();
+
+            await customFileManager.UpdateSynthDBTimestamps(customFileManager.db.GetLocalMapsCopy());
         }
     }
+#endif
 }

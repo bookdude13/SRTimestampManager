@@ -1,7 +1,10 @@
-﻿using SRTimestampLib;
+﻿using System.IO;
+using System.Threading.Tasks;
+using SRTimestampLib;
 
 namespace SRTimestampFixer
 {
+#if !UNITY_2021_3_OR_NEWER // Ignore in Unity
     internal class SRTimestampFixer
     {
         static async Task Main(string[] args)
@@ -31,7 +34,11 @@ namespace SRTimestampFixer
             logger.DebugLog($"{localMappings.MapTimestamps.Count} mappings found");
 
             // Apply saved timestamp values to all local files
-            customFileManager.ApplyLocalMappings(localMappings);
+            await customFileManager.ApplyLocalMappings(localMappings);
+            
+            // Update the actual SR database as well, for faster game import (and ensured accuracy)
+            await customFileManager.UpdateSynthDBTimestamps(customFileManager.db.GetLocalMapsCopy());
         }
     }
+#endif
 }

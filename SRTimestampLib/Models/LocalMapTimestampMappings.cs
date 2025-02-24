@@ -1,4 +1,10 @@
-﻿using Newtonsoft.Json;
+﻿using System;
+using System.Collections.Generic;
+using Newtonsoft.Json;
+
+#if UNITY_2021_3_OR_NEWER
+using UnityEngine;
+#endif
 
 namespace SRTimestampLib.Models
 {
