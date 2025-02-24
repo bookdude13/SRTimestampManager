@@ -1,11 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.IO.Compression;
-using System.Linq;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using SQLite;
 using SRTimestampLib.Models;
 
 // Avoid annoying warnings in Unity
@@ -360,6 +356,8 @@ namespace SRTimestampLib
                     logger.DebugLog($"Processed {numProcessed}/{mappings.MapTimestamps.Count}...");
                 }
             }
+            
+            logger.DebugLog("Finished applying local timestamp mappings");
         }
 
         /// <summary>
@@ -410,6 +408,64 @@ namespace SRTimestampLib
             {
                 logger.ErrorLog("Failed to write timestamp mapping: " + e.Message);
             }
+        }
+        
+        /// <summary>
+        /// Updates the SynthDB file with timestamp info for each of the given maps
+        /// </summary>
+        /// <param name="localMaps"></param>
+        public async Task UpdateSynthDBTimestamps(List<MapZMetadata> localMaps)
+        {
+            logger.DebugLog("Updating SynthDB timestamps...");
+            var synthDbPath = FileUtils.SynthDBPath;
+
+            SQLiteConnection conn;
+            SQLiteCommand cmdUpdateTime;
+            try
+            {
+                conn = new SQLiteConnection($"{synthDbPath}", SQLiteOpenFlags.ReadWrite);
+                cmdUpdateTime = conn.CreateCommand(
+                        @"UPDATE TracksCache SET date_created = @date_created WHERE leaderboard_hash = @leaderboard_hash");
+            }
+            catch (Exception e)
+            {
+                logger.ErrorLog(e.Message);
+                return;
+            }
+
+            var numProcessed = 0;
+            foreach (var map in localMaps)
+            {
+                var lastWriteTimeUtc = File.GetLastWriteTimeUtc(map.FilePath);
+                int secSinceEpoch = (int)(lastWriteTimeUtc - DateTime.UnixEpoch).TotalSeconds;
+
+                try
+                {
+                    cmdUpdateTime.Bind("@date_created", secSinceEpoch);
+                    cmdUpdateTime.Bind("@leaderboard_hash", map.hash);
+
+                    cmdUpdateTime.ExecuteNonQuery();
+                    numProcessed++;
+                }
+                catch (Exception e)
+                {
+                    logger.ErrorLog(e.Message);
+                }
+
+                // Don't hog the main thread
+                if (numProcessed % 20 == 0)
+                {
+                    await Task.Yield();
+                }
+                
+                // Let the user know work is being done
+                if (numProcessed % 100 == 0)
+                {
+                    logger.DebugLog($"  {numProcessed} / {localMaps.Count} processed");
+                }
+            }
+            
+            logger.DebugLog("Finished updating SynthDB");
         }
 
         private List<MapTimestamp> GetLocalMapTimestamps()

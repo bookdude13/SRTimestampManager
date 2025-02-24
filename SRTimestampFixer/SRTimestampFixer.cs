@@ -34,7 +34,10 @@ namespace SRTimestampFixer
             logger.DebugLog($"{localMappings.MapTimestamps.Count} mappings found");
 
             // Apply saved timestamp values to all local files
-            customFileManager.ApplyLocalMappings(localMappings);
+            await customFileManager.ApplyLocalMappings(localMappings);
+            
+            // Update the actual SR database as well, for faster game import (and ensured accuracy)
+            await customFileManager.UpdateSynthDBTimestamps(customFileManager.db.GetLocalMapsCopy());
         }
     }
 #endif

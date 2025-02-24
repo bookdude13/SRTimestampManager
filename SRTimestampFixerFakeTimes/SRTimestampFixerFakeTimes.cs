@@ -33,6 +33,8 @@ namespace SRTimestampFixerFakeTimes
             // Alternative, apply timestamps based on ids
             logger.DebugLog("Using map IDs as fake timestamps for ordering");
             customFileManager.ApplyTimestampsFromIds();
+
+            await customFileManager.UpdateSynthDBTimestamps(customFileManager.db.GetLocalMapsCopy());
         }
     }
 #endif
