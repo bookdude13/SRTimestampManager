@@ -26,7 +26,7 @@ namespace SRTimestampLib
         /// Keep track of the last full fetch we did, to allow incremental updates.
         /// </summary>
         [JsonProperty]
-        public long LastFetchTimestampSec { get; set; } = -1;
+        public long LastFetchTimestampSec { get; private set; }
         
         public List<MapZMetadata> GetLocalMapsCopy() => new(localMapMetadata);
 
@@ -38,6 +38,7 @@ namespace SRTimestampLib
         [JsonIgnore]
         private Dictionary<string, MapZMetadata> localMapHashLookup = new();
 
+        public LocalDatabase() { }
 
         public LocalDatabase(SRLogHandler logger)
         {
@@ -138,7 +139,10 @@ namespace SRTimestampLib
                 return;
             }
 
+            // Copy fields
             this.localMapMetadata = localDb.localMapMetadata;
+            this.LastFetchTimestampSec = localDb.LastFetchTimestampSec;
+
             this.localMapPathLookup.Clear();
             this.localMapHashLookup.Clear();
             foreach (var mapMeta in localMapMetadata)
@@ -182,5 +186,12 @@ namespace SRTimestampLib
         {
             return Path.Join(FileUtils.GetPersistentFolder(), LOCAL_DATABASE_NAME);
         }
+        
+        public void SetLastDownloadedTime(DateTime lastDownloadedTime) {
+            DateTimeOffset dto = lastDownloadedTime;
+            LastFetchTimestampSec = (int)dto.ToUnixTimeSeconds();
+        }
+
+        public DateTime GetLastDownloadedTime() => DateTimeOffset.FromUnixTimeSeconds(LastFetchTimestampSec).UtcDateTime;
     }
 }

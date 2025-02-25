@@ -182,6 +182,18 @@ namespace SRTimestampLib
             return default(T);
         }
 
+        public static void EmptyDirectory(string dirPath)
+        {
+            var di = new DirectoryInfo(dirPath);
+            foreach (var file in di.EnumerateFiles())
+            {
+                file.Delete(); 
+            }
+            foreach (var dir in di.EnumerateDirectories())
+            {
+                dir.Delete(true); 
+            }
+        }
 
         /// Sets file times to the given dateModified time, assuming UTC time.
         /// Return true if updated, false if error

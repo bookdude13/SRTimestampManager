@@ -74,6 +74,11 @@ public class CustomMapRepoTorrent
         _songTorrent = await RefreshMapMetadata(_magnetLink, localTimestampMappings);
     }
 
+    private string GetFinalMapPath(string relativeFilePath)
+    {
+        return Path.GetFullPath(Path.Combine(FileUtils.CustomSongsPath, Path.GetFileName(relativeFilePath)));
+    }
+
     /// <summary>
     /// Downloads all songs, with the given filters.
     /// </summary>
@@ -93,16 +98,25 @@ public class CustomMapRepoTorrent
 
         // Filter. All start as DoNotDownload, so just enable valid maps
         var toDownload = new List<ITorrentManagerFile>();
+        var alreadyDownloaded = 0;
         foreach (var file in manager.Files)
         {
-            if (!_mapsByFileName.TryGetValue(file.Path, out var mapMetadata))
+            var fileName = Path.GetFileName(file.Path);
+            if (!_mapsByFileName.TryGetValue(fileName, out var mapMetadata))
             {
-                _logger.DebugLog($"No metadata for file {file.Path}; skipping");
+                _logger.DebugLog($"No metadata for file {fileName}; skipping");
                 continue;
             }
             
-            // TODO If we already have a local copy, don't download again (TODO check hash?)
-            // Not doing now, to account for file updates w/ same file name
+            // If we already have a local copy, don't download again (TODO check hash?)
+            if (!string.IsNullOrEmpty(mapMetadata.DownloadedPath) && File.Exists(mapMetadata.DownloadedPath))
+            {
+                // _logger.DebugLog($"Already downloaded {fileName}; skipping");
+                alreadyDownloaded++;
+                continue;
+            }
+            
+            // TODO account for file updates w/ same file name
 
             // Check time
             if (mapMetadata.PublishedAtTimestampSec < startTimestampSec)
@@ -126,10 +140,12 @@ public class CustomMapRepoTorrent
             }
             
             // Not excluded; go ahead with download
-            _logger.DebugLog($"Marking {file.Path} for download");
+            _logger.DebugLog($"Marking {fileName} for download");
             await manager.SetFilePriorityAsync(file, Priority.Normal);
             toDownload.Add(file);
         }
+        
+        _logger.DebugLog($"Already downloaded {alreadyDownloaded} maps; skipping those");
         
         // Do the actual downloading
         if (toDownload.Count == 0)
@@ -139,6 +155,7 @@ public class CustomMapRepoTorrent
         }
 
         _logger.DebugLog($"Starting {toDownload.Count} download(s)...");
+        RefreshCts(TimeSpan.FromHours(12));
         var success = await DownloadAllSync(manager, _cts.Token);
         if (!success)
         {
@@ -163,8 +180,7 @@ public class CustomMapRepoTorrent
                     continue;
                 }
                 
-                var targetPath = Path.Combine(file.DownloadCompleteFullPath, Path.GetFullPath(Path.Combine(FileUtils.CustomSongsPath, Path.GetFileName(file.Path))));
-                // _logger.DebugLog($"File {file.Path} downloaded successfully. Moving to CustomSongs...");
+                var targetPath = GetFinalMapPath(file.Path);
                 if (!FileUtils.MoveFileOverwrite(file.DownloadCompleteFullPath, targetPath, _logger))
                 {
                     _logger.ErrorLog($"Failed to move file {file.DownloadCompleteFullPath} to custom songs dir! Skipping");
@@ -172,7 +188,9 @@ public class CustomMapRepoTorrent
                     continue;
                 }
 
+                parsed.FilePath = targetPath;
                 downloadedMaps.Add(parsed);
+                
                 filesMoved++;
             }
             else if (File.Exists(file.DownloadIncompleteFullPath))
@@ -187,7 +205,12 @@ public class CustomMapRepoTorrent
                 filesSkipped++;
             }
         }
+        
+        // TODO delete empty files?
+        
         _logger.DebugLog($"{filesMoved} files moved, {filesDeleted} deleted, {filesSkipped} skipped");
+
+        // await manager.MoveFilesAsync(FileUtils.CustomSongsPath, true);
 
         return downloadedMaps;
     }
@@ -246,7 +269,7 @@ public class CustomMapRepoTorrent
         var lastProgress = -1.0;
         while (!downloadCompleted.Task.IsCompleted)
         {
-            if (manager.State == TorrentState.Downloading && Math.Abs(manager.PartialProgress - lastProgress) > 0.01f)
+            if (manager.State == TorrentState.Downloading && Math.Abs(manager.PartialProgress - lastProgress) >= 1f)
             {
                 _logger.DebugLog($"  Progress: {(int)manager.PartialProgress}%");
                 lastProgress = manager.PartialProgress;
@@ -307,7 +330,8 @@ public class CustomMapRepoTorrent
             var metadata = new MapMetadata
             {
                 // TODO get more metadata from newer maps, correlate file names with metadata
-                FileName = trimmedName
+                FileName = trimmedName,
+                DownloadedPath = GetFinalMapPath(trimmedName)
             };
             
             if (localTimestampMappings.TryGetPublishedAtForFilename(trimmedName, out var publishedAt))
@@ -398,8 +422,6 @@ public class CustomMapRepoTorrent
             return null;
         }
     }
-
-    
 
     private string MagnetLinkHardCoded = "magnet:?xt=urn:btih:c2c904b7be20bb9bdcb4d2bf3b0e8dcbfba3e428&dn=CustomSongs&tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce&tr=udp%3a%2f%2fopen.tracker.cl%3a1337%2fannounce&tr=udp%3a%2f%2ftracker.torrent.eu.org%3a451%2fannounce&tr=udp%3a%2f%2fopen.stealth.si%3a80%2fannounce&tr=udp%3a%2f%2fexplodie.org%3a6969%2fannounce&tr=udp%3a%2f%2fexodus.desync.com%3a6969%2fannounce&tr=udp%3a%2f%2ftracker.tiny-vps.com%3a6969%2fannounce&tr=udp%3a%2f%2fopen.free-tracker.ga%3a6969%2fannounce&tr=http%3a%2f%2ft.jaekr.sh%3a6969%2fannounce&tr=http%3a%2f%2fshubt.net%3a2710%2fannounce&tr=http%3a%2f%2fshare.hkg-fansub.info%3a80%2fannounce.php&tr=http%3a%2f%2fservandroidkino.ru%3a80%2fannounce&tr=http%3a%2f%2fretracker.spark-rostov.ru%3a80%2fannounce&tr=http%3a%2f%2fhome.yxgz.club%3a6969%2fannounce&tr=http%3a%2f%2ffinbytes.org%3a80%2fannounce.php&tr=http%3a%2f%2f0123456789nonexistent.com%3a80%2fannounce&tr=udp%3a%2f%2fwepzone.net%3a6969%2fannounce&tr=udp%3a%2f%2fttk2.nbaonlineservice.com%3a6969%2fannounce&tr=udp%3a%2f%2ftracker2.dler.org%3a80%2fannounce&tr=udp%3a%2f%2ftracker.tryhackx.org%3a6969%2fannounce";
 }

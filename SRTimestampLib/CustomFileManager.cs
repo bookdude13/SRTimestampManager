@@ -40,7 +40,7 @@ namespace SRTimestampLib
         }
 
         /// Parses the map at the given path and adds it to the collection
-        public async Task AddLocalMap(string mapPath, MapItem mapFromZ)
+        public async Task AddLocalMap(string mapPath, MapItem? mapFromZ)
         {
             var metadata = await ParseLocalMap(mapPath, logger, mapFromZ);
             if (metadata == null)
@@ -50,6 +50,22 @@ namespace SRTimestampLib
             }
 
             db.AddMap(metadata, logger);
+        }
+
+        public async Task AddLocalMaps(List<string> mapPaths)
+        {
+            var numProcessed = 0;
+            foreach (var mapPath in mapPaths)
+            {
+                await AddLocalMap(mapPath, null);
+
+                numProcessed++;
+                if (numProcessed % 10 == 0)
+                {
+                    await Task.Yield();
+                }
+            }
+            await db.Save();
         }
 
         public string[] GetCustomMapPaths() => GetSynthriderzMapFiles(FileUtils.CustomSongsPath);
@@ -184,7 +200,7 @@ namespace SRTimestampLib
                         await Task.Yield();
                     }
                     
-                    if (count % 100 == 0)
+                    if (count % 1000 == 0)
                     {
                         logger.DebugLog($"Processed {count}/{totalFiles}...");
 
@@ -245,7 +261,7 @@ namespace SRTimestampLib
                     logger.DebugLog($"Missing {metadataFileName} in map {fileName}");
                     if (mapFromZ == null || mapFromZ.hash == null || mapFromZ.id <= 0)
                     {
-                        logger.ErrorLog($"Missing {metadataFileName}. Refetch from Z site.");
+                        logger.ErrorLog($"Missing {metadataFileName}!");
                     }
                     else
                     {
@@ -259,7 +275,7 @@ namespace SRTimestampLib
                             );
 
                             var newEntry = archive.CreateEntry(metadataFileName);
-                            using System.IO.StreamWriter streamWriter = new System.IO.StreamWriter(newEntry.Open());
+                            using StreamWriter streamWriter = new StreamWriter(newEntry.Open());
                             await streamWriter.WriteAsync(zMetadata.ToString(Formatting.None));
 
                             return new MapZMetadata(mapFromZ.id, mapFromZ.hash, filePath);
@@ -356,12 +372,13 @@ namespace SRTimestampLib
                 }
                 
                 // Let user know work is being done
-                if (numProcessed % 100 == 0)
+                if (numProcessed % 500 == 0)
                 {
-                    logger.DebugLog($"Processed {numProcessed}/{mappings.MapTimestamps.Count}...");
+                    logger.DebugLog($"Processed {numProcessed} / {mappings.MapTimestamps.Count}...");
                 }
             }
             
+            logger.DebugLog($"Processed {mappings.MapTimestamps.Count} / {mappings.MapTimestamps.Count}...");
             logger.DebugLog("Finished applying local timestamp mappings");
         }
 
@@ -418,11 +435,11 @@ namespace SRTimestampLib
         /// <summary>
         /// Updates the SynthDB file with timestamp info for each of the given maps
         /// </summary>
-        /// <param name="localMaps"></param>
-        public async Task UpdateSynthDBTimestamps(List<MapZMetadata> localMaps)
+        public async Task UpdateSynthDBTimestamps()
         {
             logger.DebugLog("Updating SynthDB timestamps...");
             var synthDbPath = FileUtils.SynthDBPath;
+            var localMaps = db.GetLocalMapsCopy();
 
             SQLiteConnection conn;
             SQLiteCommand cmdUpdateTime;
@@ -464,12 +481,13 @@ namespace SRTimestampLib
                 }
                 
                 // Let the user know work is being done
-                if (numProcessed % 100 == 0)
+                if (numProcessed % 500 == 0)
                 {
                     logger.DebugLog($"  {numProcessed} / {localMaps.Count} processed");
                 }
             }
             
+            logger.DebugLog($"  {localMaps.Count} / {localMaps.Count} processed");
             logger.DebugLog("Finished updating SynthDB");
         }
 

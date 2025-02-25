@@ -2,6 +2,7 @@ using System;
 
 namespace SRTimestampLib.Models
 {
+    [Serializable]
     public class MapZMetadata
     {
         // In synthriderz.meta.json

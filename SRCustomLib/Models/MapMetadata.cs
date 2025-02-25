@@ -6,6 +6,7 @@
 public class MapMetadata
 {
     public string FileName { get; set; }
+    public string DownloadedPath { get; set; }
     public string Hash { get; set; }
     
     public string MapName { get; set; }

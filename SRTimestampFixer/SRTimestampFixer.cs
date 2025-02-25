@@ -37,7 +37,7 @@ namespace SRTimestampFixer
             await customFileManager.ApplyLocalMappings(localMappings);
             
             // Update the actual SR database as well, for faster game import (and ensured accuracy)
-            await customFileManager.UpdateSynthDBTimestamps(customFileManager.db.GetLocalMapsCopy());
+            await customFileManager.UpdateSynthDBTimestamps();
         }
     }
 #endif
