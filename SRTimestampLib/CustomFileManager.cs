@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SQLite;
 using SRTimestampLib.Models;
+using Unity.Template.VR;
 
 // Avoid annoying warnings in Unity
 #nullable enable
@@ -300,10 +301,13 @@ namespace SRTimestampLib
         /// Returns a non-null mapping w/ no pairs on failure.
         /// </summary>
         /// <returns></returns>
-        public LocalMapTimestampMappings GetLocalTimestampMappings()
+        public async Task<LocalMapTimestampMappings> GetLocalTimestampMappings()
         {
             var mappings = new LocalMapTimestampMappings();
 
+#if UNITY_2021_3_OR_NEWER
+            var localTimestampMapping = await AddressableUtil.LoadAndParseText<List<MapItem>>("sr_timestamp_mapping");
+#else
             var localTimestampMapFile = FileUtils.MappingFilePath;
             if (!File.Exists(localTimestampMapFile))
             {
@@ -312,6 +316,8 @@ namespace SRTimestampLib
             }
 
             var localTimestampMapping = JsonConvert.DeserializeObject<List<MapItem>>(File.ReadAllText(localTimestampMapFile));
+#endif
+            
             if (localTimestampMapping == null || localTimestampMapping.Count == 0)
             {
                 logger.ErrorLog("Failed to read mappings from file!");

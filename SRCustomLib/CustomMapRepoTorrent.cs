@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using MonoTorrent;
@@ -33,6 +34,7 @@ namespace SRCustomLib
 
         private ClientEngine _clientEngine;
         private Torrent? _songTorrent;
+        private TorrentManager? _songTorrentManager;
         private CustomFileManager _customFileManager;
 
         public CustomMapRepoTorrent(SRLogHandler logger)
@@ -78,7 +80,7 @@ namespace SRCustomLib
             // TODO API call to get latest magnet link, or hosted in github or something
             _magnetLink = MagnetLinkHardCoded;
 
-            var localTimestampMappings = _customFileManager.GetLocalTimestampMappings();
+            var localTimestampMappings = await _customFileManager.GetLocalTimestampMappings();
             _songTorrent = await RefreshMapMetadata(_magnetLink, localTimestampMappings);
         }
 
@@ -129,11 +131,20 @@ namespace SRCustomLib
 
                 // Check time
                 if (mapMetadata.PublishedAtTimestampSec < startTimestampSec)
+                {
+                    // _logger.DebugLog($"Published time {mapMetadata.PublishedAtTimestampSec} < {startTimestampSec}; skipping");
                     continue;
+                }
 
                 // Check difficulty
                 if (includedDifficulties != null)
                 {
+                    if (mapMetadata.SupportedDifficulties == null)
+                    {
+                        _logger.DebugLog("No difficulties available in metadata; skipping song");
+                        continue;
+                    }
+                    
                     var diffIsIncluded = false;
                     foreach (var diff in mapMetadata.SupportedDifficulties)
                     {
@@ -145,7 +156,10 @@ namespace SRCustomLib
                     }
 
                     if (!diffIsIncluded)
+                    {
+                        _logger.DebugLog("Ignoring song; matching difficulty not found");
                         continue;
+                    }
                 }
 
                 // Not excluded; go ahead with download
@@ -219,8 +233,30 @@ namespace SRCustomLib
             // TODO delete empty files?
 
             _logger.DebugLog($"{filesMoved} files moved, {filesDeleted} deleted, {filesSkipped} skipped");
+            
+            // Only bother with imports and db updates if there were actually any new songs updated
+            if (downloadedMaps.Count > 0)
+            {
+                await _customFileManager.AddLocalMaps(downloadedMaps.Select(mapMetadata => mapMetadata.FilePath).ToList());
+                var numProcessed = 0;
+                foreach (var map in downloadedMaps)
+                {
+                    await _customFileManager.AddLocalMap(map.FilePath, null);
 
-            // await manager.MoveFilesAsync(FileUtils.CustomSongsPath, true);
+                    numProcessed++;
+                    if (numProcessed % 10 == 0)
+                    {
+                        await Task.Yield();
+                    }
+                }
+                await _customFileManager.db.Save();
+        
+                // Might as well fix the timestamps while we're here :)
+                await _customFileManager.ApplyLocalMappings(await _customFileManager.GetLocalTimestampMappings());
+        
+                // Update the actual SR database as well, for faster game import (and ensured accuracy)
+                await _customFileManager.UpdateSynthDBTimestamps();            
+            }
 
             return downloadedMaps;
         }
@@ -240,39 +276,6 @@ namespace SRCustomLib
                 downloadCompleted.SetResult(false);
             });
 
-            manager.TorrentStateChanged += ManagerOnTorrentStateChanged;
-
-            void ManagerOnTorrentStateChanged(object? sender, TorrentStateChangedEventArgs e)
-            {
-                _logger.DebugLog($"Changing state from {e.OldState} to {e.NewState}");
-
-                if (e.NewState == TorrentState.Error)
-                {
-                    _logger.ErrorLog($"Error while downloading! {e.TorrentManager.Error}");
-                    downloadCompleted.SetResult(false);
-                }
-
-                if (e.NewState == TorrentState.Stopped)
-                {
-                    _logger.DebugLog($"Stopped. Partial progress is {e.TorrentManager.PartialProgress}");
-                    if (e.TorrentManager.PartialProgress >= 100)
-                    {
-                        downloadCompleted.SetResult(true);
-                    }
-                    else
-                    {
-                        downloadCompleted.SetResult(false);
-                    }
-                }
-
-                if (e.NewState == TorrentState.Seeding)
-                {
-                    // Must be done if we're here
-                    _logger.DebugLog("Seeding! Marking as done to stop");
-                    downloadCompleted.SetResult(true);
-                }
-            }
-
             _logger.DebugLog("Starting download...");
             await manager.StartAsync();
 
@@ -285,18 +288,43 @@ namespace SRCustomLib
                     _logger.DebugLog($"  Progress: {(int)manager.PartialProgress}%");
                     lastProgress = manager.PartialProgress;
                 }
+                
+                if (manager.State == TorrentState.Error)
+                {
+                    _logger.ErrorLog($"Error while downloading! {manager.Error}");
+                    downloadCompleted.SetResult(false);
+                }
+
+                if (manager.State == TorrentState.Stopped)
+                {
+                    _logger.DebugLog($"Stopped. Partial progress is {manager.PartialProgress}");
+                    if (manager.PartialProgress >= 100)
+                    {
+                        downloadCompleted.SetResult(true);
+                    }
+                    else
+                    {
+                        downloadCompleted.SetResult(false);
+                    }
+                }
+
+                if (manager.State == TorrentState.Seeding)
+                {
+                    // Must be done if we're here
+                    _logger.DebugLog("Seeding! Marking as done to stop");
+                    downloadCompleted.SetResult(true);
+                }
 
                 await Task.Delay(1000, token);
             }
 
             var isSuccess = downloadCompleted.Task.IsCompletedSuccessfully && downloadCompleted.Task.Result;
+
             if (!isSuccess)
             {
                 _logger.ErrorLog("Failed download!");
                 return false;
             }
-
-            manager.TorrentStateChanged -= ManagerOnTorrentStateChanged;
 
             // Stop once we finish, to avoid seeding
             _logger.DebugLog("Stopping download...");
@@ -311,8 +339,7 @@ namespace SRCustomLib
         /// Gets the latest map list from the magnet link
         /// </summary>
         /// <returns></returns>
-        private async Task<Torrent?> RefreshMapMetadata(string magnetLink,
-            LocalMapTimestampMappings localTimestampMappings)
+        private async Task<Torrent?> RefreshMapMetadata(string magnetLink, LocalMapTimestampMappings localTimestampMappings)
         {
             _logger.DebugLog("Refreshing map metadata...");
             Torrent? torrent = null;
@@ -374,22 +401,27 @@ namespace SRCustomLib
         /// <returns></returns>
         private async Task<TorrentManager?> GetManagerAllDoNotDownload()
         {
+            if (_songTorrentManager != null)
+            {
+                await _clientEngine.RemoveAsync(_songTorrentManager);
+            }
+
             var torrent = await GetTorrentFromCache() ?? await GetTorrentFromMagLink(_magnetLink);
             if (torrent == null)
                 return null;
 
-            var manager = await _clientEngine.AddAsync(torrent, FileUtils.TorrentDownloadDirectory);
-
-            _logger.DebugLog($"Torrent has {manager.Files.Count} files");
+            _songTorrentManager = await _clientEngine.AddAsync(torrent, FileUtils.TorrentDownloadDirectory);
+            
+            _logger.DebugLog($"Torrent has {_songTorrentManager.Files.Count} files");
 
             // Start with no files downloaded
-            foreach (var file in manager.Files)
+            foreach (var file in _songTorrentManager.Files)
             {
-                await manager.SetFilePriorityAsync(file, Priority.DoNotDownload);
+                await _songTorrentManager.SetFilePriorityAsync(file, Priority.DoNotDownload);
             }
 
             _logger.DebugLog("TorrentManager created with all maps set to DoNotDownload");
-            return manager;
+            return _songTorrentManager;
         }
 
         private async Task CacheTorrentAsync(byte[] torrentBytes)
