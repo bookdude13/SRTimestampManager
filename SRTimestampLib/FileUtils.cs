@@ -176,7 +176,7 @@ namespace SRTimestampLib
             }
             catch (System.Exception e)
             {
-                logger.ErrorLog($"Failed to parse local map {Path.GetFileNameWithoutExtension(filePath)}: {e.Message}");
+                logger.ErrorLog($"Failed to parse file {Path.GetFileNameWithoutExtension(filePath)}: {e.Message}");
             }
 
             return default(T);
