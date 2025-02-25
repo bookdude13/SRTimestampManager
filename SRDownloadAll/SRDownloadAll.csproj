@@ -5,12 +5,17 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <AssemblyVersion>1.0.0</AssemblyVersion>
-        <FileVersion>1.0.0</FileVersion>
         <AssemblyName>SRDownloadAll</AssemblyName>
         <RootNamespace>SRDownloadAll</RootNamespace>
         <Company>SRDownloadAll</Company>
         <Product>SRDownloadAll</Product>
+        <Title>SRDownloadAll</Title>
+        <Authors>bookdude13</Authors>
+        <AssemblyVersion>1.0.0</AssemblyVersion>
+        <FileVersion>1.0.0</FileVersion>
+        <SignAssembly>False</SignAssembly>
+        <PublishSingleFile>True</PublishSingleFile>
+        <PublishTrimmed>False</PublishTrimmed>
     </PropertyGroup>
 
     <ItemGroup>
