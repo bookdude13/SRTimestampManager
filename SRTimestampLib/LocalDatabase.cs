@@ -21,6 +21,12 @@ namespace SRTimestampLib
 
         [JsonProperty]
         private List<MapZMetadata> localMapMetadata = new();
+
+        /// <summary>
+        /// Keep track of the last full fetch we did, to allow incremental updates.
+        /// </summary>
+        [JsonProperty]
+        public long LastFetchTimestampSec { get; set; } = -1;
         
         public List<MapZMetadata> GetLocalMapsCopy() => new(localMapMetadata);
 

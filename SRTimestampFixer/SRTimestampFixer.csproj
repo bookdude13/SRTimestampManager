@@ -25,4 +25,11 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\sr_timestamp_mapping.json">
+      <Link>sr_timestamp_mapping.json</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

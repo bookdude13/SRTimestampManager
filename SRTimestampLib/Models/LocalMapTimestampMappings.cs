@@ -19,6 +19,9 @@ namespace SRTimestampLib.Models
         [JsonIgnore]
         private Dictionary<string, DateTime> _hashToDateModifiedUtc = new();
 
+        [JsonIgnore]
+        private Dictionary<string, DateTime> _filenameToDateModifiedUtc = new();
+
         public void Add(MapItem mapTimestamp)
         {
             if (string.IsNullOrEmpty(mapTimestamp.hash))
@@ -41,11 +44,23 @@ namespace SRTimestampLib.Models
                 return;
             }
             _hashToDateModifiedUtc.Add(mapTimestamp.hash, dateModifiedUtc.Value);
+            
+            if (_filenameToDateModifiedUtc.ContainsKey(mapTimestamp.filename))
+            {
+                Debug.LogError($"Duplicate entry in file for filename {mapTimestamp.filename}. Times are {dateModifiedUtc.Value} and {_filenameToDateModifiedUtc[mapTimestamp.filename]}");
+                return;
+            }
+            _filenameToDateModifiedUtc.Add(mapTimestamp.filename, dateModifiedUtc.Value);
         }
 
         public bool TryGetDateModified(string hash, out DateTime dateModified)
         {
             return _hashToDateModifiedUtc.TryGetValue(hash, out dateModified);
+        }
+
+        public bool TryGetPublishedAtForFilename(string filename, out DateTime dateModified)
+        {
+            return _filenameToDateModifiedUtc.TryGetValue(filename, out dateModified);
         }
     }
 }

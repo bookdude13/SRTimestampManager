@@ -42,7 +42,7 @@ namespace SRTimestampLib
         /// Parses the map at the given path and adds it to the collection
         public async Task AddLocalMap(string mapPath, MapItem mapFromZ)
         {
-            var metadata = await ParseLocalMap(mapPath, mapFromZ);
+            var metadata = await ParseLocalMap(mapPath, logger, mapFromZ);
             if (metadata == null)
             {
                 logger.ErrorLog("Failed to parse map " + Path.GetFileNameWithoutExtension(mapPath));
@@ -165,7 +165,7 @@ namespace SRTimestampLib
                     else
                     {
                         // DB doesn't have this version; parse and add
-                        var metadata = await ParseLocalMap(filePath);
+                        var metadata = await ParseLocalMap(filePath, logger);
                         if (metadata == null)
                         {
                             logger.ErrorLog("Failed to parse map " + Path.GetFileNameWithoutExtension(filePath));
@@ -215,7 +215,7 @@ namespace SRTimestampLib
         }
 
         /// Parses local map file. Returns null if can't parse or no metadata
-        private async Task<MapZMetadata?> ParseLocalMap(string filePath, MapItem? mapFromZ = null)
+        public static async Task<MapZMetadata?> ParseLocalMap(string filePath, SRLogHandler logger, MapItem? mapFromZ = null)
         {
             var metadataFileName = "synthriderz.meta.json";
             try

@@ -46,6 +46,30 @@ namespace SRTimestampLib
         {
             get { return Path.Combine(".", "sr_timestamp_mapping.json"); }
         }
+        
+        public static string TorrentCacheDirectory
+        {
+            // Take advantage of the custom dir being present, and add our own
+            get
+            {
+                var cacheDir = Path.Combine(SynthCustomContentDir, "SongDlCache");
+                Directory.CreateDirectory(cacheDir);
+                return cacheDir;
+            }
+        }
+
+        public static string CachedTorrentFile => Path.Combine(TorrentCacheDirectory, "cached.torrent");
+        
+        public static string TorrentDownloadDirectory
+        {
+            // Take advantage of the custom dir being present, and add our own
+            get
+            {
+                var cacheDir = Path.Combine(SynthCustomContentDir, "SongDl");
+                Directory.CreateDirectory(cacheDir);
+                return cacheDir;
+            }
+        }
 
         public static string CustomSongsPath => Path.Join(SynthCustomContentDir, "CustomSongs");
         public static string SynthDBPath => Path.GetFullPath(Path.Join(SynthCustomContentDir, "SynthDB"));

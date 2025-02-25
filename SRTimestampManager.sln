@@ -17,6 +17,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SRTimestampFileGen", "SRTim
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SRTimestampFixerFakeTimes", "SRTimestampFixerFakeTimes\SRTimestampFixerFakeTimes.csproj", "{32794EC6-BD2A-4BB3-9D56-86DDEA500454}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SRCustomLib", "SRCustomLib\SRCustomLib.csproj", "{AF579FC7-539E-4679-9CCF-58F5BCF9A451}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SRDownloadAll", "SRDownloadAll\SRDownloadAll.csproj", "{0803F1B9-78E8-41EE-9830-00DF1F571B99}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +43,14 @@ Global
 		{32794EC6-BD2A-4BB3-9D56-86DDEA500454}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{32794EC6-BD2A-4BB3-9D56-86DDEA500454}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{32794EC6-BD2A-4BB3-9D56-86DDEA500454}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AF579FC7-539E-4679-9CCF-58F5BCF9A451}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF579FC7-539E-4679-9CCF-58F5BCF9A451}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF579FC7-539E-4679-9CCF-58F5BCF9A451}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF579FC7-539E-4679-9CCF-58F5BCF9A451}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0803F1B9-78E8-41EE-9830-00DF1F571B99}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0803F1B9-78E8-41EE-9830-00DF1F571B99}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0803F1B9-78E8-41EE-9830-00DF1F571B99}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0803F1B9-78E8-41EE-9830-00DF1F571B99}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

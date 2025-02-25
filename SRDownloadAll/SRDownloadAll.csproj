@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AssemblyVersion>1.0.0</AssemblyVersion>
+        <FileVersion>1.0.0</FileVersion>
+        <AssemblyName>SRDownloadAll</AssemblyName>
+        <RootNamespace>SRDownloadAll</RootNamespace>
+        <Company>SRDownloadAll</Company>
+        <Product>SRDownloadAll</Product>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\SRCustomLib\SRCustomLib.csproj" />
+    </ItemGroup>
+
+</Project>
