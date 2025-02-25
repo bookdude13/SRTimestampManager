@@ -29,7 +29,7 @@ namespace SRTimestampFixer
 
             // Initialize
             await customFileManager.Initialize();
-            var localMappings = customFileManager.GetLocalTimestampMappings();
+            var localMappings = await customFileManager.GetLocalTimestampMappings();
 
             logger.DebugLog($"{localMappings.MapTimestamps.Count} mappings found");
 
