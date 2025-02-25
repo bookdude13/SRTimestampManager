@@ -13,6 +13,20 @@ class SRDownloadAll
     {
         var runStartTime = DateTime.UtcNow;
         
+        // If we have an override for the synth directory, use that
+        if (args.Length > 0)
+        {
+            var synthDir = args[0];
+            Debug.Log($"Override synth dir is '{synthDir}'");
+            if (!Directory.Exists(synthDir))
+            {
+                Debug.LogError($"Override synth dir '{synthDir}' doesn't exist!");
+                return;
+            }
+
+            FileUtils.OverrideSynthCustomContentDir = Path.GetFullPath(synthDir);
+        }
+        
         var logger = new SRLogHandler();
         var customFileManager = new CustomFileManager(logger);
 

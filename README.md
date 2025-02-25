@@ -14,18 +14,9 @@ Windows - `C:\Program Files (x86)\Steam\steamapps\common\SynthRiders\SynthRiders
 Mac - `~/Library/Application Support/Steam/steamapps/common/SynthRiders/SynthRidersUC`  
 Linux - `~/.steam/steam/steamapps/common/SynthRiders/SynthRidersUC`
 
-## SRTimestampFixerFakeTimes
-Run this utility to set each song's timestamp based on its song id. It won't be perfectly sorted and it won't be accurate, but it'll be roughly sorted (and this accounts for cases where the given list for timestamp mapping is not complete).
+## SRDownloadAll
+Run this utility to download all current custom songs to the Synth Riders custom songs directory and correct their timestamps as much as possible.
 
 You may optionally pass the path to your SynthRidersUC folder as the first argument, if it is in a custom location.
 
-For example (run from the downloaded and extracted build): `.\SRTimestampFixerFakeTimes.exe 'E:\SteamLibrary\steamapps\common\SynthRiders\SynthRidersUC'`
-
-Default locations that are used if it is not provided:
-
-Windows - `C:\Program Files (x86)\Steam\steamapps\common\SynthRiders\SynthRidersUC`  
-Mac - `~/Library/Application Support/Steam/steamapps/common/SynthRiders/SynthRidersUC`  
-Linux - `~/.steam/steam/steamapps/common/SynthRiders/SynthRidersUC`
-
-## SRTimestampFileGen
-Most folks will never need to run this. It extracts the date modified data for all local song files and creates the JSON file used by SRTimestampFixer.
+For example (run from the downloaded and extracted build): `.\SRTimestampFixer.exe 'E:\SteamLibrary\steamapps\common\SynthRiders\SynthRidersUC'`
