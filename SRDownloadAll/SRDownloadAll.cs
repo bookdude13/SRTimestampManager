@@ -1,6 +1,7 @@
 ﻿using SRCustomLib;
 using SRTimestampLib;
 
+#if !UNITY_2021_3_OR_NEWER // Ignore in Unity
 namespace SRDownloadAll;
 
 /// <summary>
@@ -18,7 +19,7 @@ class SRDownloadAll
         // Init knowledge of local map files
         await customFileManager.Initialize();
 
-        var repo = new CustomMapRepoTorrent();
+        var repo = new CustomMapRepoTorrent(logger);
 
         // Get current state of torrent
         await repo.Initialize();
@@ -62,3 +63,4 @@ class SRDownloadAll
         await customFileManager.db.Save();
     }
 }
+#endif

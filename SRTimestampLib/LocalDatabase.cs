@@ -38,7 +38,7 @@ namespace SRTimestampLib
         [JsonIgnore]
         private Dictionary<string, MapZMetadata> localMapHashLookup = new();
 
-        public LocalDatabase() { }
+        // public LocalDatabase() { }
 
         public LocalDatabase(SRLogHandler logger)
         {
