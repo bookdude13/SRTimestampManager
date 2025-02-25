@@ -247,7 +247,8 @@ namespace SRTimestampLib
                         {
                             using (System.IO.StreamReader sr = new System.IO.StreamReader(entry.Open()))
                             {
-                                MapZMetadata? metadata = JsonConvert.DeserializeObject<MapZMetadata>(await sr.ReadToEndAsync());
+                                MapZMetadata? metadata =
+                                    JsonConvert.DeserializeObject<MapZMetadata>(await sr.ReadToEndAsync());
                                 if (metadata != null)
                                 {
                                     metadata.FilePath = filePath;
@@ -287,6 +288,12 @@ namespace SRTimestampLib
                         }
                     }
                 }
+            }
+            catch (System.IO.InvalidDataException e)
+            {
+                // The file is somehow corrupted; delete to allow retry
+                logger.ErrorLog($"Invalid local map file {Path.GetFileNameWithoutExtension(filePath)}; deleting");
+                FileUtils.DeleteFile(filePath, logger);
             }
             catch (System.Exception e)
             {
