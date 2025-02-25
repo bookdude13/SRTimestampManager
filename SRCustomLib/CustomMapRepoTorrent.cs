@@ -345,7 +345,7 @@ namespace SRCustomLib
             Torrent? torrent = null;
             if (CacheTorrentFile)
             {
-                torrent = await GetTorrentFromCache();
+                torrent = GetTorrentFromCache();
             }
 
             torrent ??= await GetTorrentFromMagLink(magnetLink);
@@ -406,7 +406,7 @@ namespace SRCustomLib
                 await _clientEngine.RemoveAsync(_songTorrentManager);
             }
 
-            var torrent = await GetTorrentFromCache() ?? await GetTorrentFromMagLink(_magnetLink);
+            var torrent = GetTorrentFromCache() ?? await GetTorrentFromMagLink(_magnetLink);
             if (torrent == null)
                 return null;
 
@@ -415,11 +415,21 @@ namespace SRCustomLib
             _logger.DebugLog($"Torrent has {_songTorrentManager.Files.Count} files");
 
             // Start with no files downloaded
+            _logger.DebugLog("Unselecting all files to start...");
+            var numProcessed = 0;
+            var numFiles = _songTorrentManager.Files.Count;
             foreach (var file in _songTorrentManager.Files)
             {
                 await _songTorrentManager.SetFilePriorityAsync(file, Priority.DoNotDownload);
+                numProcessed++;
+
+                if (numProcessed % 100 == 0)
+                {
+                    _logger.DebugLog($"  Processed {numProcessed} / {numFiles} files");
+                }
             }
 
+            _logger.DebugLog($"  Processed {numFiles} / {numFiles} files");
             _logger.DebugLog("TorrentManager created with all maps set to DoNotDownload");
             return _songTorrentManager;
         }
@@ -430,7 +440,7 @@ namespace SRCustomLib
             await FileUtils.WriteToFile(torrentBytes, torrentCacheLocation, _logger);
         }
 
-        private async Task<Torrent?> GetTorrentFromCache()
+        private Torrent? GetTorrentFromCache()
         {
             var torrentCacheLocation = FileUtils.CachedTorrentFile;
             if (Torrent.TryLoad(torrentCacheLocation, out Torrent? torrent))
