@@ -33,7 +33,7 @@ class SRDownloadAll
         logger.DebugLog($"Last fetched time is {lastStartTimeSec}");
         
         // Downloading all; use ridiculously early time as our start
-        var downloadedMaps = await repo.DownloadMaps(includedDifficulties: null, startTimestampSec: 0);
+        var downloadedMaps = await repo.DownloadMaps(includedDifficulties: null, startTime: DateTime.UnixEpoch);
 
         // Only bother with imports and db updates if there were actually any new songs updated
         if (downloadedMaps.Count > 0)
@@ -53,7 +53,7 @@ class SRDownloadAll
             await customFileManager.db.Save();
         
             // Might as well fix the timestamps while we're here :)
-            await customFileManager.ApplyLocalMappings(customFileManager.GetLocalTimestampMappings());
+            await customFileManager.ApplyLocalMappings(await customFileManager.GetLocalTimestampMappings());
         
             // Update the actual SR database as well, for faster game import (and ensured accuracy)
             await customFileManager.UpdateSynthDBTimestamps();            

@@ -8,7 +8,6 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SQLite;
 using SRTimestampLib.Models;
-using Unity.Template.VR;
 
 // Avoid annoying warnings in Unity
 #nullable enable
@@ -313,7 +312,7 @@ namespace SRTimestampLib
             var mappings = new LocalMapTimestampMappings();
 
 #if UNITY_2021_3_OR_NEWER
-            var localTimestampMapping = await AddressableUtil.LoadAndParseText<List<MapItem>>("sr_timestamp_mapping");
+            var localTimestampMapping = await Unity.Template.VR.AddressableUtil.LoadAndParseText<List<MapItem>>("sr_timestamp_mapping");
 #else
             var localTimestampMapFile = FileUtils.MappingFilePath;
             if (!File.Exists(localTimestampMapFile))
