@@ -206,7 +206,6 @@ namespace SRTimestampLib
 
                         // Save partial progress; ignore errors
                         await db.Save();
-                        await Task.Yield();
                     }
                 }
                 logger.DebugLog($"{totalFiles} local files processed");
@@ -288,7 +287,7 @@ namespace SRTimestampLib
                     }
                 }
             }
-            catch (System.IO.InvalidDataException e)
+            catch (System.IO.InvalidDataException)
             {
                 // The file is somehow corrupted; delete to allow retry
                 logger.ErrorLog($"Invalid local map file {Path.GetFileNameWithoutExtension(filePath)}; deleting");

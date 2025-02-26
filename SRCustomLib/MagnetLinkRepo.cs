@@ -1,4 +1,9 @@
-﻿using MonoTorrent;
+﻿using System;
+using System.IO;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using MonoTorrent;
 using SRTimestampLib;
 
 // Avoid annoying warnings in Unity
@@ -17,24 +22,17 @@ namespace SRCustomLib
         /// </summary>
         private const string MAGNET_FILE_LINK = "https://www.dropbox.com/scl/fi/kt38cgixmajyalxo8vxfk/magnet_songs.txt?rlkey=sk8quyuymm82sly13ev8kjqwj&st=f88d61u9&raw=1";
 
-        private SRLogHandler _logger = new();
-        private HttpClient _client = new();
-        private CancellationTokenSource _cts = new();
+        private readonly SRLogHandler _logger;
+        private readonly HttpClient _client = new();
 
         /// <summary>
         /// Where to save the cached magnet file. Used for comparing with new magnet files and avoiding extra work
         /// </summary>
         private string SongMagnetFilePath = Path.Combine(FileUtils.GetPersistentFolder(), "magnet_songs.txt");
 
-        ~MagnetLinkRepo()
+        public MagnetLinkRepo(SRLogHandler logger)
         {
-            _cts.Cancel();
-        }
-        
-        private void RefreshCts(TimeSpan timeout)
-        {
-            _cts.Cancel();
-            _cts = new CancellationTokenSource(timeout);
+            _logger = logger;
         }
 
         /// <summary>
@@ -43,8 +41,7 @@ namespace SRCustomLib
         /// <returns></returns>
         public async Task<MagnetLink?> TryGetMagnetLinkAsync()
         {
-            RefreshCts(TimeSpan.FromSeconds(120));
-            var rawRemoteMagnet = await GetFileContentsFromUrl(MAGNET_FILE_LINK, _cts.Token);
+            var rawRemoteMagnet = await GetFileContentsFromUrl(MAGNET_FILE_LINK, TimeSpan.FromSeconds(120));
 
             MagnetLink? remoteMagnet = null;
             var hasRemoteMagnet = !string.IsNullOrEmpty(rawRemoteMagnet) && MagnetLink.TryParse(rawRemoteMagnet, out remoteMagnet);
@@ -93,13 +90,15 @@ namespace SRCustomLib
             }
         }
 
-        private async Task<string?> GetFileContentsFromUrl(string url, CancellationToken cancellationToken)
+        private async Task<string?> GetFileContentsFromUrl(string url, TimeSpan timeout)
         {
             try
             {
-                await using var stream = await _client.GetStreamAsync(url, cancellationToken);
+                _client.Timeout = timeout;
+                await using var stream = await _client.GetStreamAsync(url);
+                
                 var streamReader = new StreamReader(stream);
-                return await streamReader.ReadToEndAsync(cancellationToken);
+                return await streamReader.ReadToEndAsync();
             }
             catch (Exception e)
             {

@@ -33,7 +33,8 @@ namespace SRCustomLib
         private CancellationTokenSource _cts;
         private readonly SRLogHandler _logger;
         private MagnetLink? _magnetLink;
-        private readonly MagnetLinkRepo _magnetLinkRepo = new();
+        private readonly MagnetLinkRepo _magnetLinkRepo;
+        private Torrent? _songTorrent = null;
 
         /// <summary>
         /// FileName from torrent -> the file information
@@ -49,6 +50,8 @@ namespace SRCustomLib
             _logger = logger;
             _cts = new CancellationTokenSource();
 
+            _magnetLinkRepo = new MagnetLinkRepo(_logger);
+
             var engineSettings = new EngineSettingsBuilder()
             {
                 CacheDirectory = FileUtils.TorrentCacheDirectory
@@ -56,9 +59,6 @@ namespace SRCustomLib
             _clientEngine = new ClientEngine(engineSettings);
 
             _customFileManager = new CustomFileManager(_logger);
-            
-            // Sane default
-            _magnetLink = MagnetLink.Parse(FallbackMagnetLinkHardCoded);
         }
 
         ~CustomMapRepoTorrent()
@@ -91,7 +91,7 @@ namespace SRCustomLib
             _magnetLink = await _magnetLinkRepo.TryGetMagnetLinkAsync() ?? MagnetLink.Parse(FallbackMagnetLinkHardCoded);
 
             var localTimestampMappings = await _customFileManager.GetLocalTimestampMappings();
-            await RefreshMapMetadata(_magnetLink, localTimestampMappings);
+            await RefreshMapMetadata(localTimestampMappings);
         }
 
         private string GetFinalMapPath(string relativeFilePath)
@@ -345,20 +345,34 @@ namespace SRCustomLib
             return true;
         }
 
+        private async Task<Torrent?> GetTorrent()
+        {
+            if (_songTorrent == null)
+            {
+                // Try from cache first
+                if (CacheTorrentFile)
+                {
+                    _songTorrent = GetTorrentFromCache();
+                }
+                
+                // Get from mag link if not found
+                if (_magnetLink != null)
+                {
+                    _songTorrent ??= await GetTorrentFromMagLink(_magnetLink);
+                }
+            }
+            
+            return _songTorrent;
+        }
+
         /// <summary>
         /// Gets the latest map list from the magnet link
         /// </summary>
         /// <returns></returns>
-        private async Task RefreshMapMetadata(MagnetLink magnetLink, LocalMapTimestampMappings localTimestampMappings)
+        private async Task RefreshMapMetadata(LocalMapTimestampMappings localTimestampMappings)
         {
             _logger.DebugLog("Refreshing map metadata...");
-            Torrent? torrent = null;
-            if (CacheTorrentFile)
-            {
-                torrent = GetTorrentFromCache();
-            }
-
-            torrent ??= await GetTorrentFromMagLink(magnetLink);
+            var torrent = await GetTorrent();
             if (torrent == null)
                 return;
 
