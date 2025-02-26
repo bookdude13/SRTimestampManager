@@ -22,10 +22,18 @@ namespace SRCustomLib
     {
         // Useful for testing, to not need to resolve the magnet file every time.
         private readonly bool CacheTorrentFile = true;
+        
+        /// <summary>
+        /// This is used if we don't have a cached file and can't get an online one for some reason.
+        /// It should be updated each release, but it'll be out of date quickly, so the main source of truth is the online magnet file.
+        /// </summary>
+        private string FallbackMagnetLinkHardCoded =
+            "magnet:?xt=urn:btih:c2c904b7be20bb9bdcb4d2bf3b0e8dcbfba3e428&dn=CustomSongs&tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce&tr=udp%3a%2f%2fopen.tracker.cl%3a1337%2fannounce&tr=udp%3a%2f%2ftracker.torrent.eu.org%3a451%2fannounce&tr=udp%3a%2f%2fopen.stealth.si%3a80%2fannounce&tr=udp%3a%2f%2fexplodie.org%3a6969%2fannounce&tr=udp%3a%2f%2fexodus.desync.com%3a6969%2fannounce&tr=udp%3a%2f%2ftracker.tiny-vps.com%3a6969%2fannounce&tr=udp%3a%2f%2fopen.free-tracker.ga%3a6969%2fannounce&tr=http%3a%2f%2ft.jaekr.sh%3a6969%2fannounce&tr=http%3a%2f%2fshubt.net%3a2710%2fannounce&tr=http%3a%2f%2fshare.hkg-fansub.info%3a80%2fannounce.php&tr=http%3a%2f%2fservandroidkino.ru%3a80%2fannounce&tr=http%3a%2f%2fretracker.spark-rostov.ru%3a80%2fannounce&tr=http%3a%2f%2fhome.yxgz.club%3a6969%2fannounce&tr=http%3a%2f%2ffinbytes.org%3a80%2fannounce.php&tr=http%3a%2f%2f0123456789nonexistent.com%3a80%2fannounce&tr=udp%3a%2f%2fwepzone.net%3a6969%2fannounce&tr=udp%3a%2f%2fttk2.nbaonlineservice.com%3a6969%2fannounce&tr=udp%3a%2f%2ftracker2.dler.org%3a80%2fannounce&tr=udp%3a%2f%2ftracker.tryhackx.org%3a6969%2fannounce";
 
-        private string _magnetLink = "";
         private CancellationTokenSource _cts;
-        private SRLogHandler _logger;
+        private readonly SRLogHandler _logger;
+        private MagnetLink? _magnetLink;
+        private readonly MagnetLinkRepo _magnetLinkRepo = new();
 
         /// <summary>
         /// FileName from torrent -> the file information
@@ -33,7 +41,6 @@ namespace SRCustomLib
         private Dictionary<string, MapMetadata> _mapsByFileName = new();
 
         private ClientEngine _clientEngine;
-        private Torrent? _songTorrent;
         private TorrentManager? _songTorrentManager;
         private CustomFileManager _customFileManager;
 
@@ -49,6 +56,9 @@ namespace SRCustomLib
             _clientEngine = new ClientEngine(engineSettings);
 
             _customFileManager = new CustomFileManager(_logger);
+            
+            // Sane default
+            _magnetLink = MagnetLink.Parse(FallbackMagnetLinkHardCoded);
         }
 
         ~CustomMapRepoTorrent()
@@ -77,11 +87,11 @@ namespace SRCustomLib
         /// <returns></returns>
         public async Task Initialize()
         {
-            // TODO API call to get latest magnet link, or hosted in github or something
-            _magnetLink = MagnetLinkHardCoded;
+            // Get updated link
+            _magnetLink = await _magnetLinkRepo.TryGetMagnetLinkAsync() ?? MagnetLink.Parse(FallbackMagnetLinkHardCoded);
 
             var localTimestampMappings = await _customFileManager.GetLocalTimestampMappings();
-            _songTorrent = await RefreshMapMetadata(_magnetLink, localTimestampMappings);
+            await RefreshMapMetadata(_magnetLink, localTimestampMappings);
         }
 
         private string GetFinalMapPath(string relativeFilePath)
@@ -339,7 +349,7 @@ namespace SRCustomLib
         /// Gets the latest map list from the magnet link
         /// </summary>
         /// <returns></returns>
-        private async Task<Torrent?> RefreshMapMetadata(string magnetLink, LocalMapTimestampMappings localTimestampMappings)
+        private async Task RefreshMapMetadata(MagnetLink magnetLink, LocalMapTimestampMappings localTimestampMappings)
         {
             _logger.DebugLog("Refreshing map metadata...");
             Torrent? torrent = null;
@@ -350,7 +360,7 @@ namespace SRCustomLib
 
             torrent ??= await GetTorrentFromMagLink(magnetLink);
             if (torrent == null)
-                return null;
+                return;
 
             // Get all files found within the latest torrent
             _mapsByFileName.Clear();
@@ -392,7 +402,6 @@ namespace SRCustomLib
 
             _logger.DebugLog($"Processed {numFiles}/{numFiles}");
             _logger.DebugLog($"Done processing files. Found {_mapsByFileName.Count} maps");
-            return torrent;
         }
 
         /// <summary>
@@ -406,7 +415,7 @@ namespace SRCustomLib
                 await _clientEngine.RemoveAsync(_songTorrentManager);
             }
 
-            var torrent = GetTorrentFromCache() ?? await GetTorrentFromMagLink(_magnetLink);
+            var torrent = GetTorrentFromCache() ?? await GetTorrentFromMagLink(_magnetLink!);
             if (torrent == null)
                 return null;
 
@@ -452,12 +461,11 @@ namespace SRCustomLib
         /// <summary>
         /// Gets the Torrent from the mag link, doing necessary parsing
         /// </summary>
-        /// <param name="magnetLink"></param>
+        /// <param name="magLink"></param>
         /// <returns></returns>
-        private async Task<Torrent?> GetTorrentFromMagLink(string magnetLink)
+        private async Task<Torrent?> GetTorrentFromMagLink(MagnetLink magLink)
         {
-            RefreshCts(TimeSpan.FromSeconds(30));
-            var magLink = MagnetLink.Parse(magnetLink);
+            RefreshCts(TimeSpan.FromSeconds(300));
 
             try
             {
@@ -480,8 +488,5 @@ namespace SRCustomLib
                 return null;
             }
         }
-
-        private string MagnetLinkHardCoded =
-            "magnet:?xt=urn:btih:c2c904b7be20bb9bdcb4d2bf3b0e8dcbfba3e428&dn=CustomSongs&tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce&tr=udp%3a%2f%2fopen.tracker.cl%3a1337%2fannounce&tr=udp%3a%2f%2ftracker.torrent.eu.org%3a451%2fannounce&tr=udp%3a%2f%2fopen.stealth.si%3a80%2fannounce&tr=udp%3a%2f%2fexplodie.org%3a6969%2fannounce&tr=udp%3a%2f%2fexodus.desync.com%3a6969%2fannounce&tr=udp%3a%2f%2ftracker.tiny-vps.com%3a6969%2fannounce&tr=udp%3a%2f%2fopen.free-tracker.ga%3a6969%2fannounce&tr=http%3a%2f%2ft.jaekr.sh%3a6969%2fannounce&tr=http%3a%2f%2fshubt.net%3a2710%2fannounce&tr=http%3a%2f%2fshare.hkg-fansub.info%3a80%2fannounce.php&tr=http%3a%2f%2fservandroidkino.ru%3a80%2fannounce&tr=http%3a%2f%2fretracker.spark-rostov.ru%3a80%2fannounce&tr=http%3a%2f%2fhome.yxgz.club%3a6969%2fannounce&tr=http%3a%2f%2ffinbytes.org%3a80%2fannounce.php&tr=http%3a%2f%2f0123456789nonexistent.com%3a80%2fannounce&tr=udp%3a%2f%2fwepzone.net%3a6969%2fannounce&tr=udp%3a%2f%2fttk2.nbaonlineservice.com%3a6969%2fannounce&tr=udp%3a%2f%2ftracker2.dler.org%3a80%2fannounce&tr=udp%3a%2f%2ftracker.tryhackx.org%3a6969%2fannounce";
     }
 }
