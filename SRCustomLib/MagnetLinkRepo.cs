@@ -60,6 +60,8 @@ namespace SRCustomLib
                     _logger.DebugLog("Updating magnet link!");
                     // Assume the online link is newer; invalidate the cached .torrent
                     FileUtils.DeleteFile(FileUtils.CachedTorrentFile, _logger);
+                    
+                    await FileUtils.WriteToFile(rawRemoteMagnet!, SongMagnetFilePath, _logger);
 
                     return remoteMagnet;
                 }
