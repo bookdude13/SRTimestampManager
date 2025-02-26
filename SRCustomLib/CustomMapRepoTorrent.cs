@@ -104,8 +104,8 @@ namespace SRCustomLib
         /// </summary>
         /// <param name="includedDifficulties">If set, only download songs that have one of the included difficulties. If null, download all difficulties.</param>
         /// <param name="startTime">Only maps published after this time will be included. Default is 0, so all maps.</param>
-        /// <returns></returns>
-        public async Task<List<MapZMetadata>> DownloadMaps(HashSet<string>? includedDifficulties = null, DateTimeOffset startTime = default)
+        /// <returns>Downloaded map data, or empty list if none found. Returns null on error.</returns>
+        public async Task<List<MapZMetadata>?> DownloadMaps(HashSet<string>? includedDifficulties = null, DateTimeOffset startTime = default)
         {
             var downloadedMaps = new List<MapZMetadata>();
             var startTimestampSec = startTime.ToUnixTimeSeconds();
@@ -113,7 +113,7 @@ namespace SRCustomLib
             // Prep for download
             var manager = await GetManagerAllDoNotDownload();
             if (manager == null)
-                return new List<MapZMetadata>();
+                return null;
 
             _logger.DebugLog("Filtering maps...");
 
@@ -193,7 +193,7 @@ namespace SRCustomLib
             if (!success)
             {
                 _logger.ErrorLog("Download failed!");
-                return new List<MapZMetadata>();
+                return null;
             }
 
             _logger.DebugLog("Done downloading. Moving files...");
