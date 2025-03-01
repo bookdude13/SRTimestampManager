@@ -100,6 +100,41 @@ namespace SRCustomLib
         }
 
         /// <summary>
+        /// Downloads the map with the given filename if it is present in the torrent
+        /// </summary>
+        /// <param name="fileName">The name of the resulting file, including extension (.synth)</param>
+        /// <returns>Path to the downloaded file, or null if failed</returns>
+        public async Task<string?> DownloadMapFromFilename(string fileName)
+        {
+            // Prep for download
+            var manager = await GetManagerAllDoNotDownload();
+            if (manager == null)
+                return null;
+
+            // Select the file for download
+            List<ITorrentManagerFile> toDownload = new();
+            foreach (var file in manager.Files)
+            {
+                if (Path.GetFileName(file.Path) == fileName)
+                {
+                    await manager.SetFilePriorityAsync(file, Priority.Normal);
+                    toDownload.Add(file);
+                    break;
+                }
+            }
+
+            // Download
+            var downloaded = await DoManagerDownload(manager, toDownload);
+            if (downloaded == null || downloaded.Count != 1)
+            {
+                _logger.ErrorLog("Download failed");
+                return null;
+            }
+
+            return downloaded[0].FilePath;
+        }
+
+        /// <summary>
         /// Downloads all songs, with the given filters.
         /// </summary>
         /// <param name="includedDifficulties">If set, only download songs that have one of the included difficulties. If null, download all difficulties.</param>
@@ -187,6 +222,19 @@ namespace SRCustomLib
                 return downloadedMaps;
             }
 
+            return await DoManagerDownload(manager, toDownload);
+        }
+
+        /// <summary>
+        /// Download all songs marked for download on the manager, move them to the correct location, and update timestamps
+        /// </summary>
+        /// <param name="manager"></param>
+        /// <param name="toDownload"></param>
+        /// <returns></returns>
+        private async Task<List<MapZMetadata>> DoManagerDownload(TorrentManager manager, List<ITorrentManagerFile> toDownload)
+        {
+            var downloadedMaps = new List<MapZMetadata>();
+
             _logger.DebugLog($"Starting {toDownload.Count} download(s)...");
             RefreshCts(TimeSpan.FromHours(12));
             var success = await DownloadAllSync(manager, _cts.Token);
@@ -243,7 +291,7 @@ namespace SRCustomLib
             // TODO delete empty files?
 
             _logger.DebugLog($"{filesMoved} files moved, {filesDeleted} deleted, {filesSkipped} skipped");
-            
+
             // Only bother with imports and db updates if there were actually any new songs updated
             if (downloadedMaps.Count > 0)
             {
@@ -260,12 +308,12 @@ namespace SRCustomLib
                     }
                 }
                 await _customFileManager.db.Save();
-        
+
                 // Might as well fix the timestamps while we're here :)
                 await _customFileManager.ApplyLocalMappings(await _customFileManager.GetLocalTimestampMappings());
-        
+
                 // Update the actual SR database as well, for faster game import (and ensured accuracy)
-                await _customFileManager.UpdateSynthDBTimestamps();            
+                await _customFileManager.UpdateSynthDBTimestamps();
             }
 
             return downloadedMaps;

@@ -45,12 +45,15 @@ namespace SRTimestampLib.Models
             }
             _hashToDateModifiedUtc.Add(mapTimestamp.hash, dateModifiedUtc.Value);
             
-            if (_filenameToDateModifiedUtc.ContainsKey(mapTimestamp.filename))
+            if (!string.IsNullOrEmpty(mapTimestamp.filename))
             {
-                Debug.LogError($"Duplicate entry in file for filename {mapTimestamp.filename}. Times are {dateModifiedUtc.Value} and {_filenameToDateModifiedUtc[mapTimestamp.filename]}");
-                return;
+                if (_filenameToDateModifiedUtc.ContainsKey(mapTimestamp.filename))
+                {
+                    Debug.LogError($"Duplicate entry in file for filename {mapTimestamp.filename}. Times are {dateModifiedUtc.Value} and {_filenameToDateModifiedUtc[mapTimestamp.filename]}");
+                    return;
+                }
+                _filenameToDateModifiedUtc.Add(mapTimestamp.filename, dateModifiedUtc.Value);
             }
-            _filenameToDateModifiedUtc.Add(mapTimestamp.filename, dateModifiedUtc.Value);
         }
 
         public bool TryGetDateModified(string hash, out DateTime dateModified)
