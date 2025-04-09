@@ -3,6 +3,7 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using UnityEngine.Assertions;
 
 // Avoid annoying warnings in Unity
 #nullable enable
@@ -72,6 +73,8 @@ namespace SRTimestampLib
         }
 
         public static string CustomSongsPath => Path.Join(SynthCustomContentDir, "CustomSongs");
+        public static string CustomStagesPath => Path.Join(SynthCustomContentDir, "CustomStages");
+        public static string CustomPlaylistsPath => Path.Join(SynthCustomContentDir, "CustomPlaylists");
         public static string SynthDBPath => Path.GetFullPath(Path.Join(SynthCustomContentDir, "SynthDB"));
 
         public static string TempPath
@@ -164,6 +167,13 @@ namespace SRTimestampLib
         /// Returns null on failure.
         public static async Task<T?> ReadFileJson<T>(string filePath, SRLogHandler logger)
         {
+            Assert.IsTrue(!string.IsNullOrEmpty(filePath));
+
+            if (!File.Exists(filePath))
+            {
+                return default(T);
+            }
+
             try
             {
                 using (Stream stream = new FileStream(filePath, FileMode.Open, FileAccess.Read))

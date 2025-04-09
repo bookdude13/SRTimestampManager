@@ -17,6 +17,10 @@ namespace SRTimestampLib.Models
         public string? uploaded_at { get; set; }
         public string? filename { get; set; }
         public User? user { get; set; }
+        public string[]? difficulties { get; set; }
+        public string? mapper { get; set; }
+        public string? duration { get; set; }
+        public string? artist { get; set; }
 
         public DateTime? GetPublishedAtUtc()
         {
