@@ -40,12 +40,16 @@ namespace SRTimestampLib
 
         [JsonIgnore]
         private bool _isDirty;
+        
+        [JsonIgnore]
+        public readonly string Id;
 
         // public LocalDatabase() { }
 
         public LocalDatabase(SRLogHandler logger)
         {
             this.logger = logger;
+            Id = Guid.NewGuid().ToString();
         }
 
         /// Gets locally stored metadata based on file path.
@@ -176,7 +180,7 @@ namespace SRTimestampLib
             {
                 string asJson = JsonConvert.SerializeObject(this, Formatting.Indented);
                 string tempFile = GetTempFilePath();
-                logger.DebugLog($"Saving db ({localMapMetadata.Count} maps)");
+                logger.DebugLog($"Saving db {Id} ({localMapMetadata.Count} maps)");
                 if (!await FileUtils.WriteToFile(asJson, tempFile, logger))
                 {
                     logger.ErrorLog("Failed to write db to temp file");

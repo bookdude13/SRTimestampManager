@@ -48,7 +48,7 @@ namespace SRCustomLib
         
         public bool IsInitialized { get; private set; }
 
-        public CustomMapRepoTorrent(SRLogHandler logger)
+        public CustomMapRepoTorrent(SRLogHandler logger, CustomFileManager? customFileManager = null)
         {
             _logger = logger;
             _cts = new CancellationTokenSource();
@@ -62,7 +62,7 @@ namespace SRCustomLib
             }.ToSettings();
             _clientEngine = new ClientEngine(engineSettings);
 
-            _customFileManager = new CustomFileManager(_logger);
+            _customFileManager = customFileManager ?? new CustomFileManager(_logger);
         }
 
         ~CustomMapRepoTorrent()
@@ -118,14 +118,14 @@ namespace SRCustomLib
         /// <param name="includedDifficulties"></param>
         /// <param name="startTimestampSec"></param>
         /// <returns></returns>
-        private async Task<List<ITorrentManagerFile>> FilterMapsForDownload(TorrentManager torrentManager, HashSet<string>? includedDifficulties = null, long startTimestampSec = 0)
+        private async Task<List<ITorrentManagerFile>> FilterMapsForDownload(TorrentManager torrentManager, HashSet<string>? includedDifficulties = null, long startTimestampSec = 0, CancellationToken cancellationToken = default)
         {
             var toDownload = new List<ITorrentManagerFile>();
             var alreadyDownloaded = 0;
             foreach (var file in torrentManager.Files)
             {
                 var fileName = Path.GetFileName(file.Path);
-                var mapMetadata = await _mapMetadataRepo.GetMetadataWithFallbacks(fileName, TimeSpan.FromSeconds(10));
+                var mapMetadata = await _mapMetadataRepo.GetMetadataWithFallbacks(fileName, TimeSpan.FromSeconds(10), cancellationToken);
                 if (mapMetadata == null)
                 {
                     _logger.ErrorLog($"No metadata found for file {fileName}; skipping");
@@ -288,7 +288,7 @@ namespace SRCustomLib
         /// <param name="includedDifficulties">If set, only download songs that have one of the included difficulties. If null, download all difficulties.</param>
         /// <param name="startTime">Only maps published after this time will be included. Default is 0, so all maps.</param>
         /// <returns>Downloaded map data, or empty list if none found. Returns null on error.</returns>
-        public async Task<List<MapZMetadata>?> DownloadMaps(HashSet<string>? includedDifficulties = null, DateTimeOffset startTime = default)
+        public async Task<List<MapZMetadata>?> DownloadMaps(HashSet<string>? includedDifficulties = null, DateTimeOffset startTime = default, CancellationToken cancellationToken = default)
         {
             // Prep for download
             var manager = await GetManagerAllDoNotDownload();
@@ -299,7 +299,7 @@ namespace SRCustomLib
 
             // Filter. All start as DoNotDownload, so just enable valid maps
             var startTimestampSec = startTime.ToUnixTimeSeconds();
-            var toDownload = await FilterMapsForDownload(manager, includedDifficulties, startTimestampSec);
+            var toDownload = await FilterMapsForDownload(manager, includedDifficulties, startTimestampSec, cancellationToken);
 
             // Do the actual downloading
             if (toDownload.Count == 0)

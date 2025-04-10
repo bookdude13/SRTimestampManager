@@ -44,7 +44,8 @@ namespace SRCustomLib
         /// <param name="sinceTime"></param>
         /// <param name="selectedDifficulties"></param>
         /// <returns>True if successfully downloaded (or attempted but none to download). False on failure (i.e. Z is down)</returns>
-        public async Task<bool> DownloadSongsSinceTime(DateTimeOffset sinceTime, List<string>? selectedDifficulties) {
+        public async Task<bool> DownloadSongsSinceTime(DateTimeOffset sinceTime, List<string>? selectedDifficulties, CancellationToken cancellationToken)
+        {
             logger.DebugLog($"Getting maps after time {sinceTime.ToLocalTime()}...");
 
             var tempDir = Path.Join(FileUtils.TempPath, "Download");
@@ -64,9 +65,10 @@ namespace SRCustomLib
                 return false;
             }
             
-            try {
-                List<MapItem>? mapsFromSite = await GetMapsSinceTimeForDifficulties(sinceTime, selectedDifficulties);
-                if (mapsFromSite == null)
+            try
+            {
+                List<MapItem>? mapsFromSite = await GetMapsSinceTimeForDifficulties(sinceTime, selectedDifficulties, cancellationToken);
+                if (mapsFromSite == null || cancellationToken.IsCancellationRequested)
                 {
                     return false;
                 }
@@ -253,8 +255,10 @@ namespace SRCustomLib
         /// </summary>
         /// <param name="sinceTime"></param>
         /// <param name="selectedDifficulties"></param>
+        /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<List<MapItem>?> GetMapsSinceTimeForDifficulties(DateTimeOffset sinceTime, List<string>? selectedDifficulties) {
+        public async Task<List<MapItem>?> GetMapsSinceTimeForDifficulties(DateTimeOffset sinceTime, List<string>? selectedDifficulties, CancellationToken cancellationToken = default)
+        {
             var maps = new List<MapItem>();
 
             int numPages = 1;
@@ -270,8 +274,9 @@ namespace SRCustomLib
                     logger.DebugLog($"Requesting page {pageIndex}/{numPages}");
                 }
 
-                MapPage? page = await GetMapPage(pageSize, pageIndex, sinceTime, selectedDifficulties);
-                if (page == null) {
+                MapPage? page = await GetMapPage(pageSize, pageIndex, sinceTime, selectedDifficulties, cancellationToken);
+                if (page == null)
+                {
                     logger.ErrorLog($"Returned null page {pageIndex}! Aborting.");
                     return null;
                 }
@@ -288,27 +293,28 @@ namespace SRCustomLib
 
                 pageIndex++;
             }
-            while (pageIndex <= numPages);
+            while (pageIndex <= numPages && !cancellationToken.IsCancellationRequested);
 
             return maps;
         }
-        
+
         /// <summary>
         /// Gets all map metadata from the site and uses that to fix local timestamps
         /// </summary>
         /// <param name="selectedDifficulties"></param>
+        /// <param name="cancellationToken"></param>
         /// <returns>False on failure, true on success (even if none were changed)</returns>
-        public async Task<bool> ApplyTimestampFixes(List<string> selectedDifficulties)
+        public async Task<bool> ApplyTimestampFixes(List<string> selectedDifficulties, CancellationToken cancellationToken = default)
         {
             try {
                 var sinceTime = DateTime.UnixEpoch;
 
                 logger.DebugLog("Getting all map metadata from site");
-                var mapsFromZ = await GetMapsSinceTimeForDifficulties(sinceTime, selectedDifficulties);
+                var mapsFromZ = await GetMapsSinceTimeForDifficulties(sinceTime, selectedDifficulties, cancellationToken);
                 await Task.Yield();
 
                 // Couldn't get Z data
-                if (mapsFromZ == null)
+                if (mapsFromZ == null || cancellationToken.IsCancellationRequested)
                 {
                     return false;
                 }

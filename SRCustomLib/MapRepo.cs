@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using SRTimestampLib;
 
@@ -32,7 +33,7 @@ namespace SRCustomLib
             
             _repoZ = new DownloadManagerZ(logger, _customFileManager);
             _repoSyn = new DownloadManagerSyn(logger, _customFileManager);
-            _repoTorrent = new CustomMapRepoTorrent(logger);
+            _repoTorrent = new CustomMapRepoTorrent(logger, _customFileManager);
         }
 
         public async Task Initialize()
@@ -49,7 +50,7 @@ namespace SRCustomLib
         /// <param name="cutoffTimeUtc"></param>
         /// <param name="difficultySelections"></param>
         /// <returns></returns>
-        public async Task<bool> TryDownloadWithFallbacks(DateTime cutoffTimeUtc, List<string>? difficultySelections)
+        public async Task<bool> TryDownloadWithFallbacks(DateTime cutoffTimeUtc, List<string>? difficultySelections, CancellationToken cancellationToken)
         {
             var success = false;
 
@@ -57,14 +58,14 @@ namespace SRCustomLib
             if (_useZ)
             {
                 _logger.DebugLog("Attempting to download from Z...");
-                success = await _repoZ.DownloadSongsSinceTime(cutoffTimeUtc, difficultySelections);
+                success = await _repoZ.DownloadSongsSinceTime(cutoffTimeUtc, difficultySelections, cancellationToken);
             }
         
             if (!success && _useSyn)
             {
                 // Fallback on synplicity
                 _logger.DebugLog("Attempting to download from Synplicity...");
-                return await _repoSyn.DownloadSongsSinceTime(cutoffTimeUtc, difficultySelections);
+                return await _repoSyn.DownloadSongsSinceTime(cutoffTimeUtc, difficultySelections, cancellationToken);
             }
 
             if (!success && _useTorrent)
