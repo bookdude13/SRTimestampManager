@@ -38,16 +38,22 @@ namespace SRTimestampLib.Models
             }
             //Debug.Log($"Time {mapTimestamp.modified_time} => {dateModifiedUtc.ToString()}");
 
-            if (_hashToDateModifiedUtc.ContainsKey(mapTimestamp.hash))
+            if (_hashToDateModifiedUtc.TryGetValue(mapTimestamp.hash, out var hashDateModified))
             {
-                Debug.LogError($"Duplicate entry in file for hash {mapTimestamp.hash}. Times are {dateModifiedUtc.Value} and {_hashToDateModifiedUtc[mapTimestamp.hash]}");
+                Debug.LogError($"Duplicate entry in file for hash {mapTimestamp.hash}. Times are {dateModifiedUtc.Value} and {hashDateModified}");
                 return;
             }
             _hashToDateModifiedUtc.Add(mapTimestamp.hash, dateModifiedUtc.Value);
-            
-            if (_filenameToDateModifiedUtc.ContainsKey(mapTimestamp.filename))
+
+            if (string.IsNullOrEmpty(mapTimestamp.filename))
             {
-                Debug.LogError($"Duplicate entry in file for filename {mapTimestamp.filename}. Times are {dateModifiedUtc.Value} and {_filenameToDateModifiedUtc[mapTimestamp.filename]}");
+                Debug.LogError($"Null or empty filename being added! Hash is {mapTimestamp.hash}");
+                return;
+            }
+
+            if (_filenameToDateModifiedUtc.TryGetValue(mapTimestamp.filename, out var filenameDateModified))
+            {
+                Debug.LogError($"Duplicate entry in file for filename {mapTimestamp.filename}. Times are {dateModifiedUtc.Value} and {filenameDateModified}");
                 return;
             }
             _filenameToDateModifiedUtc.Add(mapTimestamp.filename, dateModifiedUtc.Value);
