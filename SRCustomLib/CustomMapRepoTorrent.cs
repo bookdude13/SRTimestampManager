@@ -194,7 +194,7 @@ namespace SRCustomLib
         /// <param name="manager"></param>
         /// <param name="toDownload"></param>
         /// <returns></returns>
-        private async Task<List<MapZMetadata>> DownloadInternal(TorrentManager manager, List<ITorrentManagerFile> toDownload)
+        private async Task<List<MapZMetadata>?> DownloadInternal(TorrentManager manager, List<ITorrentManagerFile> toDownload)
         {
             List<MapZMetadata> downloadedMaps = new List<MapZMetadata>();
             

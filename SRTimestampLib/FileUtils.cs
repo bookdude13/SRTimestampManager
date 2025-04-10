@@ -3,7 +3,6 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using UnityEngine.Assertions;
 
 // Avoid annoying warnings in Unity
 #nullable enable
@@ -167,9 +166,7 @@ namespace SRTimestampLib
         /// Returns null on failure.
         public static async Task<T?> ReadFileJson<T>(string filePath, SRLogHandler logger)
         {
-            Assert.IsTrue(!string.IsNullOrEmpty(filePath));
-
-            if (!File.Exists(filePath))
+            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
             {
                 return default(T);
             }

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using SRCustomLib.Models;
 using SRTimestampLib;
+using SRTimestampLib.Models;
 
 // Avoid annoying warnings in Unity
 #nullable enable
@@ -112,7 +113,7 @@ namespace SRCustomLib
                         string? rawResult = await _client.GetStringAsync(requestUri);
 
                         MapPage? metadataList = string.IsNullOrEmpty(rawResult) ? null : JsonConvert.DeserializeObject<MapPage>(rawResult);
-                        if (metadataList != null && metadataList.data != null && metadataList.data.Count == 1)
+                        if (metadataList != null && metadataList.data.Count == 1)
                         {
                             metadata = MapMetadata.FromMapItem(metadataList.data[0]);
                         }

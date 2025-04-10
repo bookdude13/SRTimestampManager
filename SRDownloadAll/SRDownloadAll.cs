@@ -50,7 +50,7 @@ class SRDownloadAll
         var downloadedMaps = await repo.DownloadMaps(includedDifficulties: null, startTime: DateTime.UnixEpoch);
 
         // Only bother with imports and db updates if there were actually any new songs updated
-        if (downloadedMaps.Count > 0)
+        if (downloadedMaps != null && downloadedMaps.Count > 0)
         {
             await customFileManager.AddLocalMaps(downloadedMaps.Select(mapMetadata => mapMetadata.FilePath).ToList());
             var numProcessed = 0;

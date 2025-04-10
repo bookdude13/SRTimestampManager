@@ -321,6 +321,7 @@ namespace SRTimestampLib
             }
 
             var localTimestampMapping = JsonConvert.DeserializeObject<List<MapItem>>(File.ReadAllText(localTimestampMapFile));
+            await Task.CompletedTask;
 #endif
             
             if (localTimestampMapping == null || localTimestampMapping.Count == 0)
