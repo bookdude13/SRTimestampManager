@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
-using MemoryPack;
 using Newtonsoft.Json;
 using SRCustomLib.Models;
 using SRTimestampLib;
 using SRTimestampLib.Models;
-using Debug = SRTimestampLib.Debug;
 
 // Avoid annoying warnings in Unity
 #nullable enable
@@ -29,7 +27,6 @@ namespace SRCustomLib
         private const bool USE_SYN = false;
 
         private readonly SRLogHandler _logger;
-        private readonly HttpClient _client = new();
 
         private CachedMapMetadata _cachedMapMetadata = new();
         
@@ -95,7 +92,7 @@ namespace SRCustomLib
         /// <param name="fileName"></param>
         /// <param name="timeout"></param>
         /// <returns></returns>
-        public async Task<MapMetadata?> GetMetadataWithFallbacks(string fileName, TimeSpan timeout)
+        public async Task<MapMetadata?> GetMetadataWithFallbacks(string fileName, TimeSpan timeout, CancellationToken cancellationToken)
         {
             // Check for PublishedAt being 0, in cases of local files having partial metadata
             if (_cachedMapMetadata.MetadataByFileName.TryGetValue(fileName, out var cachedMetadata) && cachedMetadata.PublishedAtTimestampSec > 0)
@@ -113,8 +110,7 @@ namespace SRCustomLib
                     {
                         string request = GET_MAP_METADATA_URL_Z + "?s={\"filename\":\"" + escapedFileName + "\"}";
                         var requestUri = new Uri(request);
-                        var timeoutCancelCts = new CancellationTokenSource(timeout);
-                        string? rawResult = await _client.GetStringAsync(requestUri, timeoutCancelCts.Token);
+                        string? rawResult = await HttpUtils.Instance.GetStringAsync(requestUri, (int)timeout.TotalSeconds, _logger, cancellationToken);
 
                         MapPage? metadataList = string.IsNullOrEmpty(rawResult) ? null : JsonConvert.DeserializeObject<MapPage>(rawResult);
                         if (metadataList != null && metadataList.data.Count == 1)
@@ -135,8 +131,7 @@ namespace SRCustomLib
                         // Fallback on Syn, once that's up and functional
                         var request = $"{GET_MAP_METADATA_URL_SYN}/{escapedFileName}";
                         var requestUri = new Uri(request);
-                        var timeoutCancelCts = new CancellationTokenSource(timeout);
-                        var rawResult = await _client.GetStringAsync(requestUri, timeoutCancelCts.Token);
+                        var rawResult = await HttpUtils.Instance.GetStringAsync(requestUri, (int)timeout.TotalSeconds, _logger, cancellationToken);
                         metadata = string.IsNullOrEmpty(rawResult) ? null : JsonConvert.DeserializeObject<MapMetadata>(rawResult);
                     }
                     catch (Exception e)

@@ -1,7 +1,15 @@
-﻿using Newtonsoft.Json;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SRTimestampLib;
 using SRTimestampLib.Models;
+
+// Avoid annoying warnings in Unity
+#nullable enable
 
 namespace SRCustomLib
 {
@@ -283,6 +291,79 @@ namespace SRCustomLib
             while (pageIndex <= numPages);
 
             return maps;
+        }
+        
+        /// <summary>
+        /// Gets all map metadata from the site and uses that to fix local timestamps
+        /// </summary>
+        /// <param name="selectedDifficulties"></param>
+        /// <returns>False on failure, true on success (even if none were changed)</returns>
+        public async Task<bool> ApplyTimestampFixes(List<string> selectedDifficulties)
+        {
+            try {
+                var sinceTime = DateTime.UnixEpoch;
+
+                logger.DebugLog("Getting all map metadata from site");
+                var mapsFromZ = await GetMapsSinceTimeForDifficulties(sinceTime, selectedDifficulties);
+                await Task.Yield();
+
+                // Couldn't get Z data
+                if (mapsFromZ == null)
+                {
+                    return false;
+                }
+
+                logger.DebugLog("Fixing local files...");
+                var notFoundLocally = 0;
+                var numProcessed = 0;
+                foreach (var mapFromZ in mapsFromZ)
+                {
+                    var localMetadata = string.IsNullOrEmpty(mapFromZ.hash) ? null : customFileManager.db.GetFromHash(mapFromZ.hash);
+                    if (localMetadata == null || string.IsNullOrEmpty(localMetadata.FilePath))
+                    {
+                        notFoundLocally++;
+                        // logger.DebugLog($"Map id {mapFromZ.id} not found locally, skipping");
+                    }
+                    else
+                    {
+                        var fileName = Path.GetFileName(localMetadata.FilePath);
+                        var publishedAtUtc = mapFromZ.GetPublishedAtUtc();
+                        if (publishedAtUtc == null)
+                        {
+                            logger.DebugLog($"Couldn't parse published_at timestamp {mapFromZ.published_at}");
+                        }
+                        else
+                        {
+                            logger.DebugLog($"Setting timestamp for {fileName} to {publishedAtUtc}");
+                            FileUtils.TrySetDateModifiedUtc(localMetadata.FilePath, publishedAtUtc.GetValueOrDefault(), logger);
+                        }
+
+                        numProcessed++;
+
+                        // Don't hog main thread
+                        if (numProcessed % 20 == 0)
+                        {
+                            await Task.Yield();
+                        }
+
+                        // Let user know work is happening
+                        if (numProcessed % 100 == 0)
+                        {
+                            logger.DebugLog($"  Processed {numProcessed}/{mapsFromZ.Count}");
+                        }
+                    }
+                }
+
+                logger.DebugLog($"{notFoundLocally} files from Z not found locally and skipped");
+                logger.DebugLog("Finished correcting timestamps");
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                logger.ErrorLog("Failed to fix timestamps: " + e.Message);
+                return false;
+            }
         }
     }
 }

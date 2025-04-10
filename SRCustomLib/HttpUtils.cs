@@ -1,8 +1,15 @@
-﻿using SRTimestampLib;
+﻿using System;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using SRTimestampLib;
 
 #if UNITY_2021_3_OR_NEWER
 using UnityEngine.Networking;
 #endif
+
+// Avoid annoying warnings in Unity
+#nullable enable
 
 namespace SRCustomLib
 {

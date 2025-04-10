@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -35,9 +36,9 @@ namespace SRTimestampLib
             db = new LocalDatabase(logger);
         }
 
-        public async Task Initialize()
+        public async Task Initialize(CancellationToken cancellationToken = default)
         {
-            await RefreshLocalDatabase();
+            await RefreshLocalDatabase(cancellationToken);
         }
 
         /// Parses the map at the given path and adds it to the collection
@@ -149,7 +150,7 @@ namespace SRTimestampLib
 
         /// Refreshes local database metadata. Parses all missing custom map files.
         /// This saves the updated database.
-        public async Task RefreshLocalDatabase()
+        public async Task RefreshLocalDatabase(CancellationToken cancellationToken = default)
         {
             var localHashes = new HashSet<string>();
 
@@ -172,6 +173,11 @@ namespace SRTimestampLib
                 int totalFiles = files.Length;
                 foreach (var filePath in files)
                 {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+                    
                     var dbMetadata = db.GetFromPath(filePath);
                     if (dbMetadata != null)
                     {
