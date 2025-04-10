@@ -1,4 +1,6 @@
-﻿namespace SRTimestampLib.Models
+﻿using System.Collections.Generic;
+
+namespace SRTimestampLib.Models
 {
     public class MapPage
     {
