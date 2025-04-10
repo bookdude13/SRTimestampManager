@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using MemoryPack;
 using SRTimestampLib.Models;
 
 // Avoid annoying warnings in Unity
@@ -11,7 +12,8 @@ namespace SRCustomLib.Models
     /// <summary>
     /// Information about a custom map, used for search/filter
     /// </summary>
-    public class MapMetadata
+    [MemoryPackable]
+    public partial class MapMetadata
     {
         public string? FileName { get; set; }
         public string? DownloadedPath { get; set; }

@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
+using MemoryPack;
 using Newtonsoft.Json;
 using SRCustomLib.Models;
 using SRTimestampLib;
 using SRTimestampLib.Models;
+using Debug = SRTimestampLib.Debug;
 
 // Avoid annoying warnings in Unity
 #nullable enable
@@ -20,7 +23,7 @@ namespace SRCustomLib
     {
         private const string GET_MAP_METADATA_URL_Z = "https://synthriderz.com/api/beatmaps";
         private const string GET_MAP_METADATA_URL_SYN = "https://api.synplicity.live/beatmaps";
-        private const string METADATA_CACHE_FILE = "map_metadata.json";
+        private const string METADATA_CACHE_FILE = "map_metadata.memorypack";
 
         private const bool USE_Z = true;
         private const bool USE_SYN = false;
@@ -28,7 +31,7 @@ namespace SRCustomLib
         private readonly SRLogHandler _logger;
         private readonly HttpClient _client = new();
 
-        private Dictionary<string, MapMetadata> _cachedMetadataByFileName = new();
+        private CachedMapMetadata _cachedMapMetadata = new();
         
         private bool _hasInitialized;
         private bool _isDirty;
@@ -49,9 +52,9 @@ namespace SRCustomLib
         {
             // TODO consider merging instead?
             var trimmedName = metadata.FileName!.Trim();
-            if (overwriteExisting || !_cachedMetadataByFileName.ContainsKey(trimmedName))
+            if (overwriteExisting || !_cachedMapMetadata.MetadataByFileName.ContainsKey(trimmedName))
             {
-                _cachedMetadataByFileName[trimmedName] = metadata;
+                _cachedMapMetadata.MetadataByFileName[trimmedName] = metadata;
                 _isDirty = true;
             }
         }
@@ -67,8 +70,8 @@ namespace SRCustomLib
             {
                 _isDirty = false;
                 _logger.DebugLog("Persisting map metadata...");
-                string serializedCache = JsonConvert.SerializeObject(_cachedMetadataByFileName, Formatting.Indented);
-                await FileUtils.WriteToFile(serializedCache, CachePath, _logger);
+
+                await FileUtils.WriteToFileMemoryPacked(_cachedMapMetadata, CachePath, _logger);
             }
         }
 
@@ -80,7 +83,9 @@ namespace SRCustomLib
             }
             
             _logger.DebugLog("Loading map metadata...");
-            _cachedMetadataByFileName = await FileUtils.ReadFileJson<Dictionary<string, MapMetadata>>(CachePath, _logger) ?? new();
+
+            _cachedMapMetadata = await FileUtils.ReadFileMemoryPack<CachedMapMetadata>(CachePath, _logger) ?? new();
+            
             _hasInitialized = true;
         }
 
@@ -93,13 +98,11 @@ namespace SRCustomLib
         public async Task<MapMetadata?> GetMetadataWithFallbacks(string fileName, TimeSpan timeout)
         {
             // Check for PublishedAt being 0, in cases of local files having partial metadata
-            if (_cachedMetadataByFileName.TryGetValue(fileName, out var cachedMetadata) && cachedMetadata != null && cachedMetadata.PublishedAtTimestampSec > 0)
+            if (_cachedMapMetadata.MetadataByFileName.TryGetValue(fileName, out var cachedMetadata) && cachedMetadata.PublishedAtTimestampSec > 0)
             {
                 return cachedMetadata;
             }
             
-            _client.Timeout = timeout;
-
             MapMetadata? metadata = null;
             var escapedFileName = Uri.EscapeDataString(fileName);
             
@@ -110,7 +113,8 @@ namespace SRCustomLib
                     {
                         string request = GET_MAP_METADATA_URL_Z + "?s={\"filename\":\"" + escapedFileName + "\"}";
                         var requestUri = new Uri(request);
-                        string? rawResult = await _client.GetStringAsync(requestUri);
+                        var timeoutCancelCts = new CancellationTokenSource(timeout);
+                        string? rawResult = await _client.GetStringAsync(requestUri, timeoutCancelCts.Token);
 
                         MapPage? metadataList = string.IsNullOrEmpty(rawResult) ? null : JsonConvert.DeserializeObject<MapPage>(rawResult);
                         if (metadataList != null && metadataList.data.Count == 1)
@@ -131,7 +135,8 @@ namespace SRCustomLib
                         // Fallback on Syn, once that's up and functional
                         var request = $"{GET_MAP_METADATA_URL_SYN}/{escapedFileName}";
                         var requestUri = new Uri(request);
-                        var rawResult = await _client.GetStringAsync(requestUri);
+                        var timeoutCancelCts = new CancellationTokenSource(timeout);
+                        var rawResult = await _client.GetStringAsync(requestUri, timeoutCancelCts.Token);
                         metadata = string.IsNullOrEmpty(rawResult) ? null : JsonConvert.DeserializeObject<MapMetadata>(rawResult);
                     }
                     catch (Exception e)

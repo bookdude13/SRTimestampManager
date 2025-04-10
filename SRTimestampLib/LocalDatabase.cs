@@ -38,6 +38,9 @@ namespace SRTimestampLib
         [JsonIgnore]
         private Dictionary<string, MapZMetadata> localMapHashLookup = new();
 
+        [JsonIgnore]
+        private bool _isDirty;
+
         // public LocalDatabase() { }
 
         public LocalDatabase(SRLogHandler logger)
@@ -97,6 +100,8 @@ namespace SRTimestampLib
             localMapPathLookup.Add(mapMeta.FilePath, mapMeta);
             localMapHashLookup.Add(mapMeta.hash, mapMeta);
             localMapMetadata.Add(mapMeta);
+
+            _isDirty = true;
         }
 
         /// Remove maps that aren't in the list of hashes
@@ -119,6 +124,8 @@ namespace SRTimestampLib
                 localMapPathLookup.Remove(mapMeta.FilePath);
                 localMapHashLookup.Remove(mapMeta.hash);
             }
+
+            _isDirty = toRemove.Count > 0;
         }
 
         /// Loads db state from file.
@@ -128,7 +135,7 @@ namespace SRTimestampLib
             if (!File.Exists(GetDbPath()))
             {
                 logger.DebugLog("DB doesn't exist; creating...");
-                await Save();
+                await Save(true);
             };
 
             logger.DebugLog("Loading database...");
@@ -155,8 +162,16 @@ namespace SRTimestampLib
 
         /// Saves db state to file
         /// Returns true if successful, false if not
-        public async Task<bool> Save()
+        public async Task<bool> Save(bool force = false)
         {
+            if (!force && !_isDirty)
+            {
+                logger.DebugLog("Skipping save (not dirty)");
+                return true;
+            }
+
+            _isDirty = false;
+
             try
             {
                 string asJson = JsonConvert.SerializeObject(this, Formatting.Indented);
@@ -190,6 +205,7 @@ namespace SRTimestampLib
         public void SetLastDownloadedTime(DateTime lastDownloadedTime) {
             DateTimeOffset dto = lastDownloadedTime;
             LastFetchTimestampSec = (int)dto.ToUnixTimeSeconds();
+            _isDirty = true;
         }
 
         public DateTime GetLastDownloadedTime() => DateTimeOffset.FromUnixTimeSeconds(LastFetchTimestampSec).UtcDateTime;

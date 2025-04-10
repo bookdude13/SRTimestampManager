@@ -30,16 +30,10 @@ class SRDownloadAll
         var logger = new SRLogHandler();
         var customFileManager = new CustomFileManager(logger);
 
+        var mapRepo = new MapRepo(logger, useZ: true, useSyn: true, useTorrent: true, customFileManager);
+
         // Init knowledge of local map files
-        await customFileManager.Initialize();
-
-        var repo = new CustomMapRepoTorrent(logger);
-
-        // Get current state of torrent
-        await repo.Initialize();
-
-        // Start with a clean download dir, so everything can be moved over via the torrent itself
-        FileUtils.EmptyDirectory(FileUtils.TorrentDownloadDirectory);
+        await mapRepo.Initialize();
 
         // Download all missing songs (for now)
         // var lastStartTimeSec = 1738453212L;
@@ -47,34 +41,12 @@ class SRDownloadAll
         logger.DebugLog($"Last fetched time is {lastStartTimeSec}");
         
         // Downloading all; use ridiculously early time as our start
-        var downloadedMaps = await repo.DownloadMaps(includedDifficulties: null, startTime: DateTime.UnixEpoch);
-
-        // Only bother with imports and db updates if there were actually any new songs updated
-        if (downloadedMaps != null && downloadedMaps.Count > 0)
+        bool success = await mapRepo.TryDownloadWithFallbacks(DateTime.UnixEpoch, null);
+        if (success)
         {
-            await customFileManager.AddLocalMaps(downloadedMaps.Select(mapMetadata => mapMetadata.FilePath).ToList());
-            var numProcessed = 0;
-            foreach (var map in downloadedMaps)
-            {
-                await customFileManager.AddLocalMap(map.FilePath, null);
-
-                numProcessed++;
-                if (numProcessed % 10 == 0)
-                {
-                    await Task.Yield();
-                }
-            }
+            customFileManager.db.SetLastDownloadedTime(runStartTime);
             await customFileManager.db.Save();
-        
-            // Might as well fix the timestamps while we're here :)
-            await customFileManager.ApplyLocalMappings(await customFileManager.GetLocalTimestampMappings());
-        
-            // Update the actual SR database as well, for faster game import (and ensured accuracy)
-            await customFileManager.UpdateSynthDBTimestamps();            
         }
-        
-        customFileManager.db.SetLastDownloadedTime(runStartTime);
-        await customFileManager.db.Save();
     }
 }
 #endif

@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -165,7 +166,7 @@ namespace SRTimestampLib
                 }
 
                 var files = Directory.GetFiles(mapsDir, $"*{MAP_EXTENSION}");
-                logger.DebugLog($"Updating database with map files ({files.Length} found)...");
+                logger.DebugLog($"Updating database with map files ({files.Length} found on disk, {db.GetNumberOfMaps()} in db)...");
                 // This will implicitly remove any entries that are only present in the db
                 int count = 0;
                 int totalFiles = files.Length;
@@ -175,7 +176,7 @@ namespace SRTimestampLib
                     if (dbMetadata != null)
                     {
                         // DB has this version already - good to go
-                        // logger.DebugLog(Path.GetFileName(filePath) + " already in db");
+                        logger.DebugLog(Path.GetFileName(filePath) + " already in db");
                         localHashes.Add(dbMetadata.hash);
                     }
                     else
@@ -200,7 +201,7 @@ namespace SRTimestampLib
                         await Task.Yield();
                     }
                     
-                    if (count % 1000 == 0)
+                    if (count % 100 == 0)
                     {
                         logger.DebugLog($"Processed {count}/{totalFiles}...");
 
@@ -229,9 +230,27 @@ namespace SRTimestampLib
             }
         }
 
+        /// Moves a custom song to the proper synth directory
+        /// Sets dateModified to the published date (if provided), for in-game time ordering.
+        /// Returns the final path of the song
+        public string MoveCustomSong(string filePath, DateTime? publishedAtUtc = null)
+        {
+            var mapFileName = Path.GetFileName(filePath);
+            var destPath = Path.Join(FileUtils.CustomSongsPath, mapFileName);
+            FileUtils.MoveFileOverwrite(filePath, destPath, logger);
+
+            if (publishedAtUtc.HasValue) {
+                // logger.DebugLog($"Setting {mapFileName} file time to {publishedAtUtc.GetValueOrDefault()}");
+                FileUtils.TrySetDateModifiedUtc(destPath, publishedAtUtc.GetValueOrDefault(), logger);
+            }
+
+            return destPath;
+        }
+
         /// Parses local map file. Returns null if can't parse or no metadata
         public static async Task<MapZMetadata?> ParseLocalMap(string filePath, SRLogHandler logger, MapItem? mapFromZ = null)
         {
+            // logger.DebugLog($"Parsing map at {filePath}");
             var metadataFileName = "synthriderz.meta.json";
             try
             {
@@ -243,10 +262,10 @@ namespace SRTimestampLib
                     {
                         if (entry.FullName == metadataFileName)
                         {
-                            using (System.IO.StreamReader sr = new System.IO.StreamReader(entry.Open()))
+                            using (BufferedStream entryBufferStream = new BufferedStream(entry.Open()))
+                            using (System.IO.StreamReader sr = new System.IO.StreamReader(entryBufferStream))
                             {
-                                MapZMetadata? metadata =
-                                    JsonConvert.DeserializeObject<MapZMetadata>(await sr.ReadToEndAsync());
+                                MapZMetadata? metadata = JsonConvert.DeserializeObject<MapZMetadata>(await sr.ReadToEndAsync());
                                 if (metadata != null)
                                 {
                                     metadata.FilePath = filePath;

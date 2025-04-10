@@ -258,7 +258,7 @@ namespace SRCustomLib
             // Only bother with imports and db updates if there were actually any new songs updated
             if (downloadedMaps.Count > 0)
             {
-                await _customFileManager.AddLocalMaps(downloadedMaps.Select(mapMetadata => mapMetadata.FilePath).ToList());
+                // await _customFileManager.AddLocalMaps(downloadedMaps.Select(mapMetadata => mapMetadata.FilePath).ToList());
                 var numProcessed = 0;
                 foreach (var map in downloadedMaps)
                 {

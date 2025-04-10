@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using MemoryPack;
 using Newtonsoft.Json;
 
 // Avoid annoying warnings in Unity
@@ -139,6 +140,32 @@ namespace SRTimestampLib
         {
             return await WriteToFile(Encoding.UTF8.GetBytes(contents), filePath, logger);
         }
+        
+        /// <summary>
+        /// Writes a value to the given file path as a memory packed file
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="filePath"></param>
+        /// <param name="logger"></param>
+        /// <param name="cancellationToken"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns>True if successful, false on exception</returns>
+        public static async Task<bool> WriteToFileMemoryPacked<T>(T? value, string filePath, SRLogHandler logger, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using (FileStream fs = new FileStream(filePath, FileMode.Create, FileAccess.ReadWrite))
+                {
+                    await MemoryPackSerializer.SerializeAsync(fs, value, cancellationToken: cancellationToken);
+                    return true;
+                }
+            }
+            catch (System.Exception e)
+            {
+                logger.ErrorLog($"Failed to write to {filePath}: {e.Message}");
+                return false;
+            }
+        }
 
         public static async Task<bool> AppendToFile(byte[] bytes, string filePath, SRLogHandler logger)
         {
@@ -160,6 +187,32 @@ namespace SRTimestampLib
         public static async Task<bool> AppendToFile(string contents, string filePath, SRLogHandler logger)
         {
             return await AppendToFile(Encoding.UTF8.GetBytes(contents), filePath, logger);
+        }
+
+        /// Reads file contents and parses into given type. Assumes memorypack input.
+        /// Returns null on failure.
+        public static async Task<T?> ReadFileMemoryPack<T>(string filePath, SRLogHandler logger)
+        {
+            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+            {
+                return default(T);
+            }
+            
+            try
+            {
+                using (Stream stream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+                using (BufferedStream bufferedStream = new BufferedStream(stream))
+                {
+                    var contents = await MemoryPackSerializer.DeserializeAsync<T>(bufferedStream);
+                    return contents;
+                }
+            }
+            catch (System.Exception e)
+            {
+                logger.ErrorLog($"Failed to parse file {Path.GetFileNameWithoutExtension(filePath)}: {e.Message}");
+            }
+
+            return default(T);
         }
 
         /// Reads file contents and parses into given type. Assumes json input.
