@@ -145,7 +145,7 @@ namespace SRCustomLib
                 // Check time. If there's no time, then assume it's newer than the site or cached list, so should be downloaded
                 if (mapMetadata.PublishedAtTimestampSec > 0 && mapMetadata.PublishedAtTimestampSec < startTimestampSec)
                 {
-                    _logger.DebugLog($"Published time {mapMetadata.PublishedAtTimestampSec} < {startTimestampSec}; skipping");
+                    // _logger.DebugLog($"Published time {mapMetadata.PublishedAtTimestampSec} < {startTimestampSec}; skipping");
                     continue;
                 }
 

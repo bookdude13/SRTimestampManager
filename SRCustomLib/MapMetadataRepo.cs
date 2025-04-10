@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using MonoTorrent;
@@ -23,6 +24,9 @@ namespace SRCustomLib
         private const string GET_MAP_METADATA_URL_Z = "https://synthriderz.com/api/beatmaps";
         private const string GET_MAP_METADATA_URL_SYN = "https://api.synplicity.live/beatmaps";
         private const string METADATA_CACHE_FILE = "map_metadata.json";
+
+        private const bool USE_Z = true;
+        private const bool USE_SYN = false;
 
         private readonly SRLogHandler _logger;
         private readonly HttpClient _client = new();
@@ -51,8 +55,8 @@ namespace SRCustomLib
             if (overwriteExisting || !_cachedMetadataByFileName.ContainsKey(trimmedName))
             {
                 _cachedMetadataByFileName[trimmedName] = metadata;
+                _isDirty = true;
             }
-            _isDirty = true;
         }
 
         /// <summary>
@@ -99,28 +103,44 @@ namespace SRCustomLib
             
             _client.Timeout = timeout;
 
-            try
-            {
+            MapMetadata? metadata = null;
+            var escapedFileName = Uri.EscapeDataString(fileName);
+            
                 // First, try for Z
-                var escapedFileName = Uri.EscapeDataString(fileName);
-                string request = GET_MAP_METADATA_URL_Z + "?s={\"filename\":\"" + escapedFileName + "\"}";
-                var requestUri = new Uri(request);
-                string? rawResult = await _client.GetStringAsync(requestUri);
-
-                MapMetadata? metadata = null;
-                MapPage? metadataList = string.IsNullOrEmpty(rawResult) ? null : JsonConvert.DeserializeObject<MapPage>(rawResult);
-                if (metadataList != null && metadataList.data != null && metadataList.data.Count == 1)
+                if (USE_Z)
                 {
-                    metadata = MapMetadata.FromMapItem(metadataList.data[0]);
+                    try
+                    {
+                        string request = GET_MAP_METADATA_URL_Z + "?s={\"filename\":\"" + escapedFileName + "\"}";
+                        var requestUri = new Uri(request);
+                        string? rawResult = await _client.GetStringAsync(requestUri);
+
+                        MapPage? metadataList = string.IsNullOrEmpty(rawResult) ? null : JsonConvert.DeserializeObject<MapPage>(rawResult);
+                        if (metadataList != null && metadataList.data != null && metadataList.data.Count == 1)
+                        {
+                            metadata = MapMetadata.FromMapItem(metadataList.data[0]);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.ErrorLog($"Failed to get metadata from Z for map '{fileName}': {e.Message}");
+                    }
                 }
 
-                if (metadata == null)
+                if (metadata == null && USE_SYN)
                 {
-                    // // Fallback on Syn, once that's up and functional
-                    // request = $"{GET_MAP_METADATA_URL_SYN}/{escapedFileName}";
-                    // requestUri = new Uri(request);
-                    // rawResult = await _client.GetStringAsync(requestUri);
-                    // metadata = string.IsNullOrEmpty(rawResult) ? null : JsonConvert.DeserializeObject<MapMetadata>(rawResult);
+                    try
+                    {
+                        // Fallback on Syn, once that's up and functional
+                        var request = $"{GET_MAP_METADATA_URL_SYN}/{escapedFileName}";
+                        var requestUri = new Uri(request);
+                        var rawResult = await _client.GetStringAsync(requestUri);
+                        metadata = string.IsNullOrEmpty(rawResult) ? null : JsonConvert.DeserializeObject<MapMetadata>(rawResult);
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.ErrorLog($"Failed to get metadata from Syn for map '{fileName}': {e.Message}");
+                    }
                 }
                 
                 // If we found metadata, cache it for later
@@ -131,12 +151,6 @@ namespace SRCustomLib
 
                 // If we didn't get full metadata but had cached metadata, use that since it might be partial
                 return metadata ?? cachedMetadata;
-            }
-            catch (Exception e)
-            {
-                _logger.ErrorLog($"Failed to get metadata for map '{fileName}': {e.Message}");
-                return null;
-            }
         }
     }
 }
