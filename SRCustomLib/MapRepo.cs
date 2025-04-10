@@ -21,7 +21,7 @@ namespace SRCustomLib
         {
             _logger = logger;
 
-            _customFileManager ??= new CustomFileManager(logger);
+            _customFileManager = customFileManager ?? new CustomFileManager(logger);
             
             _useZ = useZ;
             _useSyn = useSyn;
