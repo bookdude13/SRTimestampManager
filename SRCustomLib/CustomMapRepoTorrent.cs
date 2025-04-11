@@ -34,23 +34,27 @@ namespace SRCustomLib
         private readonly SRLogHandler _logger;
         private MagnetLink? _magnetLink;
         private readonly MagnetLinkRepo _magnetLinkRepo;
+        private readonly MapMetadataRepo _mapMetadataRepo;
         private Torrent? _songTorrent = null;
 
         /// <summary>
         /// FileName from torrent -> the file information
         /// </summary>
-        private Dictionary<string, MapMetadata> _mapsByFileName = new();
+        // private Dictionary<string, MapMetadata> _mapsByFileName = new();
 
         private ClientEngine _clientEngine;
         private TorrentManager? _songTorrentManager;
         private CustomFileManager _customFileManager;
+        
+        public bool IsInitialized { get; private set; }
 
-        public CustomMapRepoTorrent(SRLogHandler logger)
+        public CustomMapRepoTorrent(SRLogHandler logger, CustomFileManager? customFileManager = null)
         {
             _logger = logger;
             _cts = new CancellationTokenSource();
 
             _magnetLinkRepo = new MagnetLinkRepo(_logger);
+            _mapMetadataRepo = new MapMetadataRepo(_logger);
 
             var engineSettings = new EngineSettingsBuilder()
             {
@@ -58,7 +62,7 @@ namespace SRCustomLib
             }.ToSettings();
             _clientEngine = new ClientEngine(engineSettings);
 
-            _customFileManager = new CustomFileManager(_logger);
+            _customFileManager = customFileManager ?? new CustomFileManager(_logger);
         }
 
         ~CustomMapRepoTorrent()
@@ -87,11 +91,18 @@ namespace SRCustomLib
         /// <returns></returns>
         public async Task Initialize()
         {
+            if (IsInitialized)
+                return;
+
+            await _mapMetadataRepo.Initialize();
+
             // Get updated link
             _magnetLink = await _magnetLinkRepo.TryGetMagnetLinkAsync() ?? MagnetLink.Parse(FallbackMagnetLinkHardCoded);
 
             var localTimestampMappings = await _customFileManager.GetLocalTimestampMappings();
             await RefreshMapMetadata(localTimestampMappings);
+
+            IsInitialized = true;
         }
 
         private string GetFinalMapPath(string relativeFilePath)
@@ -100,67 +111,24 @@ namespace SRCustomLib
         }
 
         /// <summary>
-        /// Downloads the map with the given filename if it is present in the torrent
+        /// Prepares the torrent manager for file downloads by excluding any unintended downloads from the manager.
+        /// This indirectly updates file metadata where it is missing
         /// </summary>
-        /// <param name="fileName">The name of the resulting file, including extension (.synth)</param>
-        /// <returns>Path to the downloaded file, or null if failed</returns>
-        public async Task<string?> DownloadMapFromFilename(string fileName)
-        {
-            // Prep for download
-            var manager = await GetManagerAllDoNotDownload();
-            if (manager == null)
-                return null;
-
-            // Select the file for download
-            List<ITorrentManagerFile> toDownload = new();
-            foreach (var file in manager.Files)
-            {
-                if (Path.GetFileName(file.Path) == fileName)
-                {
-                    await manager.SetFilePriorityAsync(file, Priority.Normal);
-                    toDownload.Add(file);
-                    break;
-                }
-            }
-
-            // Download
-            var downloaded = await DoManagerDownload(manager, toDownload);
-            if (downloaded == null || downloaded.Count != 1)
-            {
-                _logger.ErrorLog("Download failed");
-                return null;
-            }
-
-            return downloaded[0].FilePath;
-        }
-
-        /// <summary>
-        /// Downloads all songs, with the given filters.
-        /// </summary>
-        /// <param name="includedDifficulties">If set, only download songs that have one of the included difficulties. If null, download all difficulties.</param>
-        /// <param name="startTime">Only maps published after this time will be included. Default is 0, so all maps.</param>
+        /// <param name="torrentManager"></param>
+        /// <param name="includedDifficulties"></param>
+        /// <param name="startTimestampSec"></param>
         /// <returns></returns>
-        public async Task<List<MapZMetadata>> DownloadMaps(HashSet<string>? includedDifficulties = null, DateTimeOffset startTime = default)
+        private async Task<List<ITorrentManagerFile>> FilterMapsForDownload(TorrentManager torrentManager, HashSet<string>? includedDifficulties = null, long startTimestampSec = 0, CancellationToken cancellationToken = default)
         {
-            var downloadedMaps = new List<MapZMetadata>();
-            var startTimestampSec = startTime.ToUnixTimeSeconds();
-
-            // Prep for download
-            var manager = await GetManagerAllDoNotDownload();
-            if (manager == null)
-                return new List<MapZMetadata>();
-
-            _logger.DebugLog("Filtering maps...");
-
-            // Filter. All start as DoNotDownload, so just enable valid maps
             var toDownload = new List<ITorrentManagerFile>();
             var alreadyDownloaded = 0;
-            foreach (var file in manager.Files)
+            foreach (var file in torrentManager.Files)
             {
                 var fileName = Path.GetFileName(file.Path);
-                if (!_mapsByFileName.TryGetValue(fileName, out var mapMetadata))
+                var mapMetadata = await _mapMetadataRepo.GetMetadataWithFallbacks(fileName, TimeSpan.FromSeconds(10), cancellationToken);
+                if (mapMetadata == null)
                 {
-                    _logger.DebugLog($"No metadata for file {fileName}; skipping");
+                    _logger.ErrorLog($"No metadata found for file {fileName}; skipping");
                     continue;
                 }
 
@@ -174,8 +142,8 @@ namespace SRCustomLib
 
                 // TODO account for file updates w/ same file name
 
-                // Check time
-                if (mapMetadata.PublishedAtTimestampSec < startTimestampSec)
+                // Check time. If there's no time, then assume it's newer than the site or cached list, so should be downloaded
+                if (mapMetadata.PublishedAtTimestampSec > 0 && mapMetadata.PublishedAtTimestampSec < startTimestampSec)
                 {
                     // _logger.DebugLog($"Published time {mapMetadata.PublishedAtTimestampSec} < {startTimestampSec}; skipping");
                     continue;
@@ -209,39 +177,34 @@ namespace SRCustomLib
 
                 // Not excluded; go ahead with download
                 _logger.DebugLog($"Marking {fileName} for download");
-                await manager.SetFilePriorityAsync(file, Priority.Normal);
+                await torrentManager.SetFilePriorityAsync(file, Priority.Normal);
                 toDownload.Add(file);
             }
 
             _logger.DebugLog($"Already downloaded {alreadyDownloaded} maps; skipping those");
 
-            // Do the actual downloading
-            if (toDownload.Count == 0)
-            {
-                _logger.DebugLog("No maps marked for download; up-to-date");
-                return downloadedMaps;
-            }
+            await _mapMetadataRepo.PersistCache();
 
-            return await DoManagerDownload(manager, toDownload);
+            return toDownload;
         }
 
         /// <summary>
-        /// Download all songs marked for download on the manager, move them to the correct location, and update timestamps
+        /// Does the actual downloading of the given files, and updates any necessary internal state with their contents
         /// </summary>
         /// <param name="manager"></param>
         /// <param name="toDownload"></param>
         /// <returns></returns>
-        private async Task<List<MapZMetadata>> DoManagerDownload(TorrentManager manager, List<ITorrentManagerFile> toDownload)
+        private async Task<List<MapZMetadata>?> DownloadInternal(TorrentManager manager, List<ITorrentManagerFile> toDownload)
         {
-            var downloadedMaps = new List<MapZMetadata>();
-
+            List<MapZMetadata> downloadedMaps = new List<MapZMetadata>();
+            
             _logger.DebugLog($"Starting {toDownload.Count} download(s)...");
-            RefreshCts(TimeSpan.FromHours(12));
+            RefreshCts(TimeSpan.FromHours(1));
             var success = await DownloadAllSync(manager, _cts.Token);
             if (!success)
             {
                 _logger.ErrorLog("Download failed!");
-                return new List<MapZMetadata>();
+                return null;
             }
 
             _logger.DebugLog("Done downloading. Moving files...");
@@ -291,11 +254,11 @@ namespace SRCustomLib
             // TODO delete empty files?
 
             _logger.DebugLog($"{filesMoved} files moved, {filesDeleted} deleted, {filesSkipped} skipped");
-
+            
             // Only bother with imports and db updates if there were actually any new songs updated
             if (downloadedMaps.Count > 0)
             {
-                await _customFileManager.AddLocalMaps(downloadedMaps.Select(mapMetadata => mapMetadata.FilePath).ToList());
+                // await _customFileManager.AddLocalMaps(downloadedMaps.Select(mapMetadata => mapMetadata.FilePath).ToList());
                 var numProcessed = 0;
                 foreach (var map in downloadedMaps)
                 {
@@ -308,15 +271,44 @@ namespace SRCustomLib
                     }
                 }
                 await _customFileManager.db.Save();
-
+        
                 // Might as well fix the timestamps while we're here :)
                 await _customFileManager.ApplyLocalMappings(await _customFileManager.GetLocalTimestampMappings());
-
+        
                 // Update the actual SR database as well, for faster game import (and ensured accuracy)
-                await _customFileManager.UpdateSynthDBTimestamps();
+                await _customFileManager.UpdateSynthDBTimestamps();            
             }
 
             return downloadedMaps;
+        }
+
+        /// <summary>
+        /// Downloads all songs, with the given filters.
+        /// </summary>
+        /// <param name="includedDifficulties">If set, only download songs that have one of the included difficulties. If null, download all difficulties.</param>
+        /// <param name="startTime">Only maps published after this time will be included. Default is 0, so all maps.</param>
+        /// <returns>Downloaded map data, or empty list if none found. Returns null on error.</returns>
+        public async Task<List<MapZMetadata>?> DownloadMaps(HashSet<string>? includedDifficulties = null, DateTimeOffset startTime = default, CancellationToken cancellationToken = default)
+        {
+            // Prep for download
+            var manager = await GetManagerAllDoNotDownload();
+            if (manager == null)
+                return null;
+
+            _logger.DebugLog("Filtering maps...");
+
+            // Filter. All start as DoNotDownload, so just enable valid maps
+            var startTimestampSec = startTime.ToUnixTimeSeconds();
+            var toDownload = await FilterMapsForDownload(manager, includedDifficulties, startTimestampSec, cancellationToken);
+
+            // Do the actual downloading
+            if (toDownload.Count == 0)
+            {
+                _logger.DebugLog("No maps marked for download; up-to-date");
+                return new List<MapZMetadata>();
+            }
+
+            return await DownloadInternal(manager, toDownload);
         }
 
         /// <summary>
@@ -425,7 +417,7 @@ namespace SRCustomLib
                 return;
 
             // Get all files found within the latest torrent
-            _mapsByFileName.Clear();
+            // _mapsByFileName.Clear();
             var files = torrent.Files;
 
             var numFiles = files.Count;
@@ -445,7 +437,8 @@ namespace SRCustomLib
                 {
                     // TODO get more metadata from newer maps, correlate file names with metadata
                     FileName = trimmedName,
-                    DownloadedPath = GetFinalMapPath(trimmedName)
+                    DownloadedPath = GetFinalMapPath(trimmedName),
+                    PublishedAtTimestampSec = 0
                 };
 
                 if (localTimestampMappings.TryGetPublishedAtForFilename(trimmedName, out var publishedAt))
@@ -454,7 +447,8 @@ namespace SRCustomLib
                 }
 
                 // _logger.DebugLog($"File: {file.Path}");
-                _mapsByFileName[trimmedName] = metadata;
+                // _mapsByFileName[trimmedName] = metadata;
+                _mapMetadataRepo.AddToCache(metadata);
 
                 if (i % 500 == 0)
                 {
@@ -463,7 +457,9 @@ namespace SRCustomLib
             }
 
             _logger.DebugLog($"Processed {numFiles}/{numFiles}");
-            _logger.DebugLog($"Done processing files. Found {_mapsByFileName.Count} maps");
+            await _mapMetadataRepo.PersistCache();
+
+            _logger.DebugLog($"Done processing files");
         }
 
         /// <summary>
@@ -531,7 +527,7 @@ namespace SRCustomLib
 
             try
             {
-                _logger.DebugLog("Getting torrent from magnet link...");
+                _logger.DebugLog("Getting torrent from magnet link (this can take a few minutes)...");
                 var torrentFileBytes = await _clientEngine.DownloadMetadataAsync(magLink, _cts.Token);
                 _logger.DebugLog("Parsing torrent...");
                 var writeableTorrentBytes = torrentFileBytes.ToArray();

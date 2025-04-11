@@ -1,9 +1,10 @@
 ﻿using System;
 using System.IO;
 using System.Net.Http;
-using System.Threading;
 using System.Threading.Tasks;
 using MonoTorrent;
+using Newtonsoft.Json;
+using SRCustomLib.Models;
 using SRTimestampLib;
 
 // Avoid annoying warnings in Unity
@@ -17,10 +18,9 @@ namespace SRCustomLib
     public class MagnetLinkRepo
     {
         /// <summary>
-        /// Stored on Dropbox, publicly accessible and downloadable.
-        /// Note - copy the share link, then change the ending "&dl=0" to "&raw=1" to have it get the raw contents
+        /// API to retrieve the latest mirror link
         /// </summary>
-        private const string MAGNET_FILE_LINK = "https://www.dropbox.com/scl/fi/kt38cgixmajyalxo8vxfk/magnet_songs.txt?rlkey=sk8quyuymm82sly13ev8kjqwj&st=f88d61u9&raw=1";
+        private const string GET_MAGNET_API_URL = "https://synthriderz.com/api/beatmaps/torrent";
 
         private readonly SRLogHandler _logger;
         private readonly HttpClient _client = new();
@@ -41,11 +41,17 @@ namespace SRCustomLib
         /// <returns></returns>
         public async Task<MagnetLink?> TryGetMagnetLinkAsync()
         {
-            var rawRemoteMagnet = await GetFileContentsFromUrl(MAGNET_FILE_LINK, TimeSpan.FromSeconds(120));
+            MagnetLinkInfo? remoteMagnetInfo = await GetMagnetLinkFromUrl(GET_MAGNET_API_URL, TimeSpan.FromSeconds(120));
+            string rawRemoteMagnet = remoteMagnetInfo?.magnet_uri ?? "";
 
             MagnetLink? remoteMagnet = null;
             var hasRemoteMagnet = !string.IsNullOrEmpty(rawRemoteMagnet) && MagnetLink.TryParse(rawRemoteMagnet, out remoteMagnet);
             var hasLocalMagnet = TryGetCurrentMagnetLink(out var localMagnet, out var rawLocalMagnet);
+
+            if (hasRemoteMagnet)
+            {
+                _logger.DebugLog($"Found remote magnet link, last updated {remoteMagnetInfo!.updated_at}");
+            }
 
             if (hasRemoteMagnet && hasLocalMagnet)
             {
@@ -92,15 +98,14 @@ namespace SRCustomLib
             }
         }
 
-        private async Task<string?> GetFileContentsFromUrl(string url, TimeSpan timeout)
+        private async Task<MagnetLinkInfo?> GetMagnetLinkFromUrl(string url, TimeSpan timeout)
         {
             try
             {
                 _client.Timeout = timeout;
-                await using var stream = await _client.GetStreamAsync(url);
-                
-                var streamReader = new StreamReader(stream);
-                return await streamReader.ReadToEndAsync();
+                string? rawContents = await _client.GetStringAsync(url);
+
+                return string.IsNullOrEmpty(rawContents) ? null : JsonConvert.DeserializeObject<MagnetLinkInfo>(rawContents);
             }
             catch (Exception e)
             {
