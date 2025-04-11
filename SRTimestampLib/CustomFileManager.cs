@@ -361,6 +361,7 @@ namespace SRTimestampLib
                 mappings.Add(mapping);
             }
 
+            await Task.CompletedTask;
             return mappings;
         }
 
