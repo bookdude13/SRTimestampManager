@@ -189,6 +189,41 @@ namespace SRCustomLib
         }
 
         /// <summary>
+        /// Downloads the map with the given filename if it is present in the torrent
+        /// </summary>
+        /// <param name="fileName">The name of the resulting file, including extension (.synth)</param>
+        /// <returns>Path to the downloaded file, or null if failed</returns>
+        public async Task<string?> DownloadMapFromFilename(string fileName)
+        {
+            // Prep for download
+            var manager = await GetManagerAllDoNotDownload();
+            if (manager == null)
+                return null;
+
+            // Select the file for download
+            List<ITorrentManagerFile> toDownload = new();
+            foreach (var file in manager.Files)
+            {
+                if (Path.GetFileName(file.Path) == fileName)
+                {
+                    await manager.SetFilePriorityAsync(file, Priority.Normal);
+                    toDownload.Add(file);
+                    break;
+                }
+            }
+
+            // Download
+            var downloaded = await DownloadInternal(manager, toDownload);
+            if (downloaded == null || downloaded.Count != 1)
+            {
+                _logger.ErrorLog("Download failed");
+                return null;
+            }
+
+            return downloaded[0].FilePath;
+        }
+
+        /// <summary>
         /// Does the actual downloading of the given files, and updates any necessary internal state with their contents
         /// </summary>
         /// <param name="manager"></param>
