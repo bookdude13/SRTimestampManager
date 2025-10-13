@@ -15,6 +15,9 @@ namespace SRTimestampLib
     public class LocalDatabase
     {
         [JsonIgnore]
+        private bool _logVerbose = false;
+        
+        [JsonIgnore]
         private readonly string LOCAL_DATABASE_NAME = "SRQD_local.db";
         [JsonIgnore]
         private SRLogHandler logger;
@@ -101,14 +104,17 @@ namespace SRTimestampLib
 
             if (localMapHashLookup.ContainsKey(mapMeta.hash))
             {
-                logger.ErrorLog($"Map with hash '{mapMeta.hash}' already exists! Skipping. File path: '{mapMeta.FilePath}'");
+                logger.ErrorLog($"Map with hash already exists! Skipping. File: '{Path.GetFileNameWithoutExtension(mapMeta.FilePath)}'");
                 return false;
                 // logger.DebugLog($"Removing map with matching hash {mapMeta.hash}");
                 // localMapMetadata.Remove(localMapHashLookup[mapMeta.hash]);
                 // localMapHashLookup.Remove(mapMeta.hash);
             }
 
-            logger.DebugLog($"Adding map {Path.GetFileNameWithoutExtension(mapMeta.FilePath)}");
+            if (_logVerbose)
+            {
+                logger.DebugLog($"Adding map {Path.GetFileNameWithoutExtension(mapMeta.FilePath)}");
+            }
             localMapPathLookup.Add(mapMeta.FilePath, mapMeta);
             localMapHashLookup.Add(mapMeta.hash, mapMeta);
             localMapMetadata.Add(mapMeta);
@@ -132,7 +138,10 @@ namespace SRTimestampLib
 
             foreach (var mapMeta in toRemove)
             {
-                logger.DebugLog($"db map not found in filesystem; removing {Path.GetFileName(mapMeta.FilePath)}");
+                if (_logVerbose)
+                {
+                    logger.DebugLog($"db map not found in filesystem; removing {Path.GetFileName(mapMeta.FilePath)}");
+                }
                 localMapMetadata.Remove(mapMeta);
                 localMapPathLookup.Remove(mapMeta.FilePath);
                 localMapHashLookup.Remove(mapMeta.hash);
@@ -179,7 +188,10 @@ namespace SRTimestampLib
         {
             if (!force && !_isDirty)
             {
-                logger.DebugLog("Skipping save (not dirty)");
+                if (_logVerbose)
+                {
+                    logger.DebugLog("Skipping save (not dirty)");
+                }
                 return true;
             }
 

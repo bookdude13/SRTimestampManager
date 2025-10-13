@@ -18,6 +18,7 @@ namespace SRCustomLib
     /// </summary>
     public class DownloadManagerZ
     {
+        private bool _logVerbose = false;
         public SRLogHandler logger;
         public CustomFileManager customFileManager;
         
@@ -335,34 +336,39 @@ namespace SRCustomLib
                     {
                         notFoundLocally++;
                         // logger.DebugLog($"Map id {mapFromZ.id} not found locally, skipping");
+                        continue;
+                    }
+
+                    var fileName = Path.GetFileName(localMetadata.FilePath);
+                    var publishedAtUtc = mapFromZ.GetPublishedAtUtc();
+                    if (publishedAtUtc == null)
+                    {
+                        logger.DebugLog($"Couldn't parse published_at timestamp {mapFromZ.published_at}");
                     }
                     else
                     {
-                        var fileName = Path.GetFileName(localMetadata.FilePath);
-                        var publishedAtUtc = mapFromZ.GetPublishedAtUtc();
-                        if (publishedAtUtc == null)
+                        if (FileUtils.TryGetDateModifiedUtc(localMetadata.FilePath, logger, out var originalTimeUtc))
                         {
-                            logger.DebugLog($"Couldn't parse published_at timestamp {mapFromZ.published_at}");
+                            if (_logVerbose || originalTimeUtc != publishedAtUtc)
+                            {
+                                logger.DebugLog($"{Path.GetFileNameWithoutExtension(fileName)}: {originalTimeUtc} => {publishedAtUtc}");
+                            }
                         }
-                        else
-                        {
-                            logger.DebugLog($"Setting timestamp for {fileName} to {publishedAtUtc}");
-                            FileUtils.TrySetDateModifiedUtc(localMetadata.FilePath, publishedAtUtc.GetValueOrDefault(), logger);
-                        }
+                        FileUtils.TrySetDateModifiedUtc(localMetadata.FilePath, publishedAtUtc.GetValueOrDefault(), logger);
+                    }
 
-                        numProcessed++;
+                    numProcessed++;
 
-                        // Don't hog main thread
-                        if (numProcessed % 20 == 0)
-                        {
-                            await Task.Yield();
-                        }
+                    // Don't hog main thread
+                    if (numProcessed % 20 == 0)
+                    {
+                        await Task.Yield();
+                    }
 
-                        // Let user know work is happening
-                        if (numProcessed % 100 == 0)
-                        {
-                            logger.DebugLog($"  Processed {numProcessed}/{mapsFromZ.Count}");
-                        }
+                    // Let user know work is happening
+                    if (numProcessed % 100 == 0)
+                    {
+                        logger.DebugLog($"  Processed {numProcessed}/{mapsFromZ.Count}");
                     }
                 }
 

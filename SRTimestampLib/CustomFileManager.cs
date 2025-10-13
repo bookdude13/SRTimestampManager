@@ -18,6 +18,8 @@ namespace SRTimestampLib
 {
     public class CustomFileManager
     {
+        public bool _logVerbose = false;
+
         public SRLogHandler logger;
         public LocalDatabase db;
 
@@ -63,7 +65,12 @@ namespace SRTimestampLib
             try
             {
                 var directoryExists = Directory.Exists(rootDirectory);
-                logger.DebugLog($"Getting map files from {rootDirectory}. Directory exists? {directoryExists}");
+
+                if (_logVerbose)
+                {
+                    logger.DebugLog($"Getting map files from {rootDirectory}. Directory exists? {directoryExists}");
+                }
+
                 if (directoryExists)
                 {
                     return Directory.GetFiles(rootDirectory, $"*{MAP_EXTENSION}");
@@ -84,7 +91,12 @@ namespace SRTimestampLib
             try
             {
                 var directoryExists = Directory.Exists(rootDirectory);
-                logger.DebugLog($"Getting stage files from {rootDirectory}. Directory exists? {directoryExists}");
+
+                if (_logVerbose)
+                {
+                    logger.DebugLog($"Getting stage files from {rootDirectory}. Directory exists? {directoryExists}");
+                }
+
                 if (directoryExists)
                 {
                     var filePaths = new List<string>();
@@ -110,7 +122,12 @@ namespace SRTimestampLib
             try
             {
                 var directoryExists = Directory.Exists(rootDirectory);
-                logger.DebugLog($"Getting playlist files from {rootDirectory}. Directory exists? {directoryExists}");
+
+                if (_logVerbose)
+                {
+                    logger.DebugLog($"Getting playlist files from {rootDirectory}. Directory exists? {directoryExists}");
+                }
+
                 if (directoryExists)
                 {
                     var filePaths = new List<string>();
@@ -166,7 +183,10 @@ namespace SRTimestampLib
                     if (dbMetadata != null)
                     {
                         // DB has this version already - good to go
-                        logger.DebugLog(Path.GetFileName(filePath) + " already in db");
+                        if (_logVerbose)
+                        {
+                            logger.DebugLog(Path.GetFileName(filePath) + " already in db");
+                        }
                         localHashes.Add(dbMetadata.hash);
                     }
                     else
@@ -193,7 +213,10 @@ namespace SRTimestampLib
                     
                     if (count % 100 == 0)
                     {
-                        logger.DebugLog($"Processed {count}/{totalFiles}...");
+                        if (_logVerbose)
+                        {
+                            logger.DebugLog($"Processed {count}/{totalFiles}...");
+                        }
 
                         // Save partial progress; ignore errors
                         await db.Save();
@@ -248,6 +271,10 @@ namespace SRTimestampLib
         {
             // logger.DebugLog($"Parsing map at {filePath}");
             var metadataFileName = "synthriderz.meta.json";
+            
+            // Save original time, so if we modify it during reading we can still keep the original file time.
+            bool hasOriginalTime = FileUtils.TryGetDateModifiedUtc(filePath, logger, out var originalDateModifiedUtc);
+
             try
             {
                 using (Stream stream = new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite))
@@ -310,6 +337,14 @@ namespace SRTimestampLib
             catch (System.Exception e)
             {
                 logger.ErrorLog($"Failed to parse local map {Path.GetFileNameWithoutExtension(filePath)}: {e.Message}");
+            }
+            finally
+            {
+                if (hasOriginalTime && File.Exists(filePath))
+                {
+                    // Restore initial time before we changed it by looking (and possibly changing the synth metadata)
+                    FileUtils.TrySetDateModifiedUtc(filePath, originalDateModifiedUtc, logger);
+                }
             }
 
             return null;
@@ -412,6 +447,7 @@ namespace SRTimestampLib
         /// <summary>
         /// Use the local song info to generate a fake, but ordered, timestamp based on the song's id.
         /// Ending timestamp is Jan 2, 2019 (before any maps were uploaded) + id minutes
+        /// Note - this was meant to be a workaround for not having Z times for a while. This is no longer needed, but left for posterity
         /// </summary>
         public void ApplyTimestampsFromIds()
         {
