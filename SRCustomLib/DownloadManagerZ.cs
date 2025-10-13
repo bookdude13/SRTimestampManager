@@ -155,9 +155,15 @@ namespace SRCustomLib
                 string finalPath = customFileManager.MoveCustomSong(destPath, map.GetPublishedAtUtc());
 
                 // logger.DebugLog("Success!");
-                await customFileManager.AddLocalMap(finalPath, map);
+                bool isAdded = await customFileManager.AddLocalMap(finalPath, map);
+                if (!isAdded)
+                {
+                    logger.DebugLog($"Failed to add map with final path {finalPath}");
+                    return false;
+                }
                 
-                // Wait for all other operations to finish, then ensure the timestamp has been set
+                // Wait for all other operations to finish, then ensure the timestamp has been set.
+                // Don't set if there was a problem adding the map (conflict)
                 await Task.Yield();
                 if (map.GetPublishedAtUtc().HasValue)
                 {

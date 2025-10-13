@@ -81,23 +81,31 @@ namespace SRTimestampLib
             return localMapMetadata.Count;
         }
 
+        /// <summary>
         /// Adds map metadata to database.
-        /// If the file path is already present or hash is already present replace
-        public void AddMap(MapZMetadata mapMeta, SRLogHandler logger)
+        /// If the file path is already present or hash is already present, returns false (caller decides how to handle)
+        /// </summary>
+        /// <param name="mapMeta"></param>
+        /// <param name="logger"></param>
+        public bool TryAddMap(MapZMetadata mapMeta, SRLogHandler logger)
         {
             // Remove existing to replace with new
             if (localMapPathLookup.ContainsKey(mapMeta.FilePath))
             {
-                logger.DebugLog($"Removing map with existing path {mapMeta.FilePath}");
-                localMapMetadata.Remove(localMapPathLookup[mapMeta.FilePath]);
-                localMapPathLookup.Remove(mapMeta.FilePath);
+                logger.ErrorLog($"Map already exists at file path! Skipping. '{mapMeta.FilePath}'");
+                return false;
+                // logger.DebugLog($"Removing map with existing path {mapMeta.FilePath}");
+                // localMapMetadata.Remove(localMapPathLookup[mapMeta.FilePath]);
+                // localMapPathLookup.Remove(mapMeta.FilePath);
             }
 
             if (localMapHashLookup.ContainsKey(mapMeta.hash))
             {
-                logger.DebugLog($"Removing map with matching hash {mapMeta.hash}");
-                localMapMetadata.Remove(localMapHashLookup[mapMeta.hash]);
-                localMapHashLookup.Remove(mapMeta.hash);
+                logger.ErrorLog($"Map with hash '{mapMeta.hash}' already exists! Skipping. File path: '{mapMeta.FilePath}'");
+                return false;
+                // logger.DebugLog($"Removing map with matching hash {mapMeta.hash}");
+                // localMapMetadata.Remove(localMapHashLookup[mapMeta.hash]);
+                // localMapHashLookup.Remove(mapMeta.hash);
             }
 
             logger.DebugLog($"Adding map {Path.GetFileNameWithoutExtension(mapMeta.FilePath)}");
@@ -106,6 +114,7 @@ namespace SRTimestampLib
             localMapMetadata.Add(mapMeta);
 
             _isDirty = true;
+            return true;
         }
 
         /// Remove maps that aren't in the list of hashes

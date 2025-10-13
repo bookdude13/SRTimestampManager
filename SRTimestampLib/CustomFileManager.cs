@@ -42,32 +42,16 @@ namespace SRTimestampLib
         }
 
         /// Parses the map at the given path and adds it to the collection
-        public async Task AddLocalMap(string mapPath, MapItem? mapFromZ)
+        public async Task<bool> AddLocalMap(string mapPath, MapItem? mapFromZ)
         {
             var metadata = await ParseLocalMap(mapPath, logger, mapFromZ);
             if (metadata == null)
             {
                 logger.ErrorLog("Failed to parse map " + Path.GetFileNameWithoutExtension(mapPath));
-                return;
+                return false;
             }
 
-            db.AddMap(metadata, logger);
-        }
-
-        public async Task AddLocalMaps(List<string> mapPaths)
-        {
-            var numProcessed = 0;
-            foreach (var mapPath in mapPaths)
-            {
-                await AddLocalMap(mapPath, null);
-
-                numProcessed++;
-                if (numProcessed % 10 == 0)
-                {
-                    await Task.Yield();
-                }
-            }
-            await db.Save();
+            return db.TryAddMap(metadata, logger);
         }
 
         public string[] GetCustomMapPaths() => GetSynthriderzMapFiles(FileUtils.CustomSongsPath);
@@ -196,7 +180,7 @@ namespace SRTimestampLib
                         }
 
                         localHashes.Add(metadata.hash);
-                        db.AddMap(metadata, logger);
+                        _ = db.TryAddMap(metadata, logger);
                     }
 
                     count++;
@@ -252,8 +236,14 @@ namespace SRTimestampLib
 
             return destPath;
         }
-
+        
+        /// <summary>
         /// Parses local map file. Returns null if can't parse or no metadata
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <param name="logger"></param>
+        /// <param name="mapFromZ"></param>
+        /// <returns></returns>
         public static async Task<MapZMetadata?> ParseLocalMap(string filePath, SRLogHandler logger, MapItem? mapFromZ = null)
         {
             // logger.DebugLog($"Parsing map at {filePath}");
@@ -287,28 +277,27 @@ namespace SRTimestampLib
                     if (mapFromZ == null || mapFromZ.hash == null || mapFromZ.id <= 0)
                     {
                         logger.ErrorLog($"Missing {metadataFileName}!");
+                        return null;
                     }
-                    else
+
+                    // We have information from Z to add this in ourselves
+                    logger.ErrorLog($"Creating missing {metadataFileName} for {fileName}");
+                    try
                     {
-                        // We have information from Z to add this in ourselves
-                        logger.ErrorLog($"Creating missing {metadataFileName} for {fileName}");
-                        try
-                        {
-                            JObject zMetadata = new JObject(
-                                new JProperty("id", mapFromZ.id),
-                                new JProperty("hash", mapFromZ.hash)
-                            );
+                        JObject zMetadata = new JObject(
+                            new JProperty("id", mapFromZ.id),
+                            new JProperty("hash", mapFromZ.hash)
+                        );
 
-                            var newEntry = archive.CreateEntry(metadataFileName);
-                            using StreamWriter streamWriter = new StreamWriter(newEntry.Open());
-                            await streamWriter.WriteAsync(zMetadata.ToString(Formatting.None));
+                        var newEntry = archive.CreateEntry(metadataFileName);
+                        using StreamWriter streamWriter = new StreamWriter(newEntry.Open());
+                        await streamWriter.WriteAsync(zMetadata.ToString(Formatting.None));
 
-                            return new MapZMetadata(mapFromZ.id, mapFromZ.hash, filePath);
-                        }
-                        catch (Exception e)
-                        {
-                            logger.ErrorLog("Failed to create missing metadata entry: " + e.Message);
-                        }
+                        return new MapZMetadata(mapFromZ.id, mapFromZ.hash, filePath);
+                    }
+                    catch (Exception e)
+                    {
+                        logger.ErrorLog("Failed to create missing metadata entry: " + e.Message);
                     }
                 }
             }
