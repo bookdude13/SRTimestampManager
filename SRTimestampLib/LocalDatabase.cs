@@ -15,6 +15,9 @@ namespace SRTimestampLib
     public class LocalDatabase
     {
         [JsonIgnore]
+        private bool _logVerbose = false;
+        
+        [JsonIgnore]
         private readonly string LOCAL_DATABASE_NAME = "SRQD_local.db";
         [JsonIgnore]
         private SRLogHandler logger;
@@ -81,31 +84,43 @@ namespace SRTimestampLib
             return localMapMetadata.Count;
         }
 
+        /// <summary>
         /// Adds map metadata to database.
-        /// If the file path is already present or hash is already present replace
-        public void AddMap(MapZMetadata mapMeta, SRLogHandler logger)
+        /// If the file path is already present or hash is already present, returns false (caller decides how to handle)
+        /// </summary>
+        /// <param name="mapMeta"></param>
+        /// <param name="logger"></param>
+        public bool TryAddMap(MapZMetadata mapMeta, SRLogHandler logger)
         {
             // Remove existing to replace with new
             if (localMapPathLookup.ContainsKey(mapMeta.FilePath))
             {
-                logger.DebugLog($"Removing map with existing path {mapMeta.FilePath}");
-                localMapMetadata.Remove(localMapPathLookup[mapMeta.FilePath]);
-                localMapPathLookup.Remove(mapMeta.FilePath);
+                logger.ErrorLog($"Map already exists at file path! Skipping. '{mapMeta.FilePath}'");
+                return false;
+                // logger.DebugLog($"Removing map with existing path {mapMeta.FilePath}");
+                // localMapMetadata.Remove(localMapPathLookup[mapMeta.FilePath]);
+                // localMapPathLookup.Remove(mapMeta.FilePath);
             }
 
             if (localMapHashLookup.ContainsKey(mapMeta.hash))
             {
-                logger.DebugLog($"Removing map with matching hash {mapMeta.hash}");
-                localMapMetadata.Remove(localMapHashLookup[mapMeta.hash]);
-                localMapHashLookup.Remove(mapMeta.hash);
+                logger.ErrorLog($"Map with hash already exists! Skipping. File: '{Path.GetFileNameWithoutExtension(mapMeta.FilePath)}'");
+                return false;
+                // logger.DebugLog($"Removing map with matching hash {mapMeta.hash}");
+                // localMapMetadata.Remove(localMapHashLookup[mapMeta.hash]);
+                // localMapHashLookup.Remove(mapMeta.hash);
             }
 
-            logger.DebugLog($"Adding map {Path.GetFileNameWithoutExtension(mapMeta.FilePath)}");
+            if (_logVerbose)
+            {
+                logger.DebugLog($"Adding map {Path.GetFileNameWithoutExtension(mapMeta.FilePath)}");
+            }
             localMapPathLookup.Add(mapMeta.FilePath, mapMeta);
             localMapHashLookup.Add(mapMeta.hash, mapMeta);
             localMapMetadata.Add(mapMeta);
 
             _isDirty = true;
+            return true;
         }
 
         /// Remove maps that aren't in the list of hashes
@@ -123,7 +138,10 @@ namespace SRTimestampLib
 
             foreach (var mapMeta in toRemove)
             {
-                logger.DebugLog($"db map not found in filesystem; removing {Path.GetFileName(mapMeta.FilePath)}");
+                if (_logVerbose)
+                {
+                    logger.DebugLog($"db map not found in filesystem; removing {Path.GetFileName(mapMeta.FilePath)}");
+                }
                 localMapMetadata.Remove(mapMeta);
                 localMapPathLookup.Remove(mapMeta.FilePath);
                 localMapHashLookup.Remove(mapMeta.hash);
@@ -170,7 +188,10 @@ namespace SRTimestampLib
         {
             if (!force && !_isDirty)
             {
-                logger.DebugLog("Skipping save (not dirty)");
+                if (_logVerbose)
+                {
+                    logger.DebugLog("Skipping save (not dirty)");
+                }
                 return true;
             }
 

@@ -18,6 +18,8 @@ namespace SRTimestampLib
 {
     public class CustomFileManager
     {
+        public bool _logVerbose = false;
+
         public SRLogHandler logger;
         public LocalDatabase db;
 
@@ -42,32 +44,16 @@ namespace SRTimestampLib
         }
 
         /// Parses the map at the given path and adds it to the collection
-        public async Task AddLocalMap(string mapPath, MapItem? mapFromZ)
+        public async Task<bool> AddLocalMap(string mapPath, MapItem? mapFromZ)
         {
             var metadata = await ParseLocalMap(mapPath, logger, mapFromZ);
             if (metadata == null)
             {
                 logger.ErrorLog("Failed to parse map " + Path.GetFileNameWithoutExtension(mapPath));
-                return;
+                return false;
             }
 
-            db.AddMap(metadata, logger);
-        }
-
-        public async Task AddLocalMaps(List<string> mapPaths)
-        {
-            var numProcessed = 0;
-            foreach (var mapPath in mapPaths)
-            {
-                await AddLocalMap(mapPath, null);
-
-                numProcessed++;
-                if (numProcessed % 10 == 0)
-                {
-                    await Task.Yield();
-                }
-            }
-            await db.Save();
+            return db.TryAddMap(metadata, logger);
         }
 
         public string[] GetCustomMapPaths() => GetSynthriderzMapFiles(FileUtils.CustomSongsPath);
@@ -79,7 +65,12 @@ namespace SRTimestampLib
             try
             {
                 var directoryExists = Directory.Exists(rootDirectory);
-                logger.DebugLog($"Getting map files from {rootDirectory}. Directory exists? {directoryExists}");
+
+                if (_logVerbose)
+                {
+                    logger.DebugLog($"Getting map files from {rootDirectory}. Directory exists? {directoryExists}");
+                }
+
                 if (directoryExists)
                 {
                     return Directory.GetFiles(rootDirectory, $"*{MAP_EXTENSION}");
@@ -100,7 +91,12 @@ namespace SRTimestampLib
             try
             {
                 var directoryExists = Directory.Exists(rootDirectory);
-                logger.DebugLog($"Getting stage files from {rootDirectory}. Directory exists? {directoryExists}");
+
+                if (_logVerbose)
+                {
+                    logger.DebugLog($"Getting stage files from {rootDirectory}. Directory exists? {directoryExists}");
+                }
+
                 if (directoryExists)
                 {
                     var filePaths = new List<string>();
@@ -126,7 +122,12 @@ namespace SRTimestampLib
             try
             {
                 var directoryExists = Directory.Exists(rootDirectory);
-                logger.DebugLog($"Getting playlist files from {rootDirectory}. Directory exists? {directoryExists}");
+
+                if (_logVerbose)
+                {
+                    logger.DebugLog($"Getting playlist files from {rootDirectory}. Directory exists? {directoryExists}");
+                }
+
                 if (directoryExists)
                 {
                     var filePaths = new List<string>();
@@ -182,7 +183,10 @@ namespace SRTimestampLib
                     if (dbMetadata != null)
                     {
                         // DB has this version already - good to go
-                        logger.DebugLog(Path.GetFileName(filePath) + " already in db");
+                        if (_logVerbose)
+                        {
+                            logger.DebugLog(Path.GetFileName(filePath) + " already in db");
+                        }
                         localHashes.Add(dbMetadata.hash);
                     }
                     else
@@ -196,7 +200,7 @@ namespace SRTimestampLib
                         }
 
                         localHashes.Add(metadata.hash);
-                        db.AddMap(metadata, logger);
+                        _ = db.TryAddMap(metadata, logger);
                     }
 
                     count++;
@@ -209,7 +213,10 @@ namespace SRTimestampLib
                     
                     if (count % 100 == 0)
                     {
-                        logger.DebugLog($"Processed {count}/{totalFiles}...");
+                        if (_logVerbose)
+                        {
+                            logger.DebugLog($"Processed {count}/{totalFiles}...");
+                        }
 
                         // Save partial progress; ignore errors
                         await db.Save();
@@ -252,12 +259,22 @@ namespace SRTimestampLib
 
             return destPath;
         }
-
+        
+        /// <summary>
         /// Parses local map file. Returns null if can't parse or no metadata
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <param name="logger"></param>
+        /// <param name="mapFromZ"></param>
+        /// <returns></returns>
         public static async Task<MapZMetadata?> ParseLocalMap(string filePath, SRLogHandler logger, MapItem? mapFromZ = null)
         {
             // logger.DebugLog($"Parsing map at {filePath}");
             var metadataFileName = "synthriderz.meta.json";
+            
+            // Save original time, so if we modify it during reading we can still keep the original file time.
+            bool hasOriginalTime = FileUtils.TryGetDateModifiedUtc(filePath, logger, out var originalDateModifiedUtc);
+
             try
             {
                 using (Stream stream = new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite))
@@ -287,28 +304,27 @@ namespace SRTimestampLib
                     if (mapFromZ == null || mapFromZ.hash == null || mapFromZ.id <= 0)
                     {
                         logger.ErrorLog($"Missing {metadataFileName}!");
+                        return null;
                     }
-                    else
+
+                    // We have information from Z to add this in ourselves
+                    logger.ErrorLog($"Creating missing {metadataFileName} for {fileName}");
+                    try
                     {
-                        // We have information from Z to add this in ourselves
-                        logger.ErrorLog($"Creating missing {metadataFileName} for {fileName}");
-                        try
-                        {
-                            JObject zMetadata = new JObject(
-                                new JProperty("id", mapFromZ.id),
-                                new JProperty("hash", mapFromZ.hash)
-                            );
+                        JObject zMetadata = new JObject(
+                            new JProperty("id", mapFromZ.id),
+                            new JProperty("hash", mapFromZ.hash)
+                        );
 
-                            var newEntry = archive.CreateEntry(metadataFileName);
-                            using StreamWriter streamWriter = new StreamWriter(newEntry.Open());
-                            await streamWriter.WriteAsync(zMetadata.ToString(Formatting.None));
+                        var newEntry = archive.CreateEntry(metadataFileName);
+                        using StreamWriter streamWriter = new StreamWriter(newEntry.Open());
+                        await streamWriter.WriteAsync(zMetadata.ToString(Formatting.None));
 
-                            return new MapZMetadata(mapFromZ.id, mapFromZ.hash, filePath);
-                        }
-                        catch (Exception e)
-                        {
-                            logger.ErrorLog("Failed to create missing metadata entry: " + e.Message);
-                        }
+                        return new MapZMetadata(mapFromZ.id, mapFromZ.hash, filePath);
+                    }
+                    catch (Exception e)
+                    {
+                        logger.ErrorLog("Failed to create missing metadata entry: " + e.Message);
                     }
                 }
             }
@@ -321,6 +337,14 @@ namespace SRTimestampLib
             catch (System.Exception e)
             {
                 logger.ErrorLog($"Failed to parse local map {Path.GetFileNameWithoutExtension(filePath)}: {e.Message}");
+            }
+            finally
+            {
+                if (hasOriginalTime && File.Exists(filePath))
+                {
+                    // Restore initial time before we changed it by looking (and possibly changing the synth metadata)
+                    FileUtils.TrySetDateModifiedUtc(filePath, originalDateModifiedUtc, logger);
+                }
             }
 
             return null;
@@ -423,6 +447,7 @@ namespace SRTimestampLib
         /// <summary>
         /// Use the local song info to generate a fake, but ordered, timestamp based on the song's id.
         /// Ending timestamp is Jan 2, 2019 (before any maps were uploaded) + id minutes
+        /// Note - this was meant to be a workaround for not having Z times for a while. This is no longer needed, but left for posterity
         /// </summary>
         public void ApplyTimestampsFromIds()
         {
