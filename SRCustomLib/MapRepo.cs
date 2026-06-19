@@ -21,6 +21,8 @@ namespace SRCustomLib
         private bool _useSyn;
         private bool _useTorrent;
         
+        public int LastNewMapsFound { get; private set; }
+        
         public MapRepo(SRLogHandler logger, bool useZ = true, bool useSyn = true, bool useTorrent = true, CustomFileManager? customFileManager = null)
         {
             _logger = logger;
@@ -53,19 +55,29 @@ namespace SRCustomLib
         public async Task<bool> TryDownloadWithFallbacks(DateTime cutoffTimeUtc, List<string>? difficultySelections, CancellationToken cancellationToken)
         {
             var success = false;
+            LastNewMapsFound = 0;
 
             // First, try Z download
             if (_useZ)
             {
                 _logger.DebugLog("Attempting to download from Z...");
                 success = await _repoZ.DownloadSongsSinceTime(cutoffTimeUtc, difficultySelections, cancellationToken);
+                if (success)
+                {
+                    LastNewMapsFound = _repoZ.LastNewMapsFound;
+                }
             }
         
             if (!success && _useSyn)
             {
                 // Fallback on synplicity
                 _logger.DebugLog("Attempting to download from Synplicity...");
-                return await _repoSyn.DownloadSongsSinceTime(cutoffTimeUtc, difficultySelections, cancellationToken);
+                success = await _repoSyn.DownloadSongsSinceTime(cutoffTimeUtc, difficultySelections, cancellationToken);
+                if (success)
+                {
+                    LastNewMapsFound = _repoSyn.LastNewMapsFound;
+                }
+                return success;
             }
 
             if (!success && _useTorrent)
@@ -84,6 +96,10 @@ namespace SRCustomLib
                 var diffSet = difficultySelections == null ? new() : new HashSet<string>(difficultySelections);
                 var downloadedMaps = await _repoTorrent.DownloadMaps(null, cutoffTimeUtc);
                 success = downloadedMaps != null;
+                if (success)
+                {
+                    LastNewMapsFound = downloadedMaps?.Count ?? 0;
+                }
             }
 
             return success;

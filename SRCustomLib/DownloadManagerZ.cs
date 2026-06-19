@@ -45,8 +45,11 @@ namespace SRCustomLib
         /// <param name="sinceTime"></param>
         /// <param name="selectedDifficulties"></param>
         /// <returns>True if successfully downloaded (or attempted but none to download). False on failure (i.e. Z is down)</returns>
+        public int LastNewMapsFound { get; private set; }
+
         public async Task<bool> DownloadSongsSinceTime(DateTimeOffset sinceTime, List<string>? selectedDifficulties, CancellationToken cancellationToken)
         {
+            LastNewMapsFound = 0;
             logger.DebugLog($"Getting maps after time {sinceTime.ToLocalTime()}...");
 
             var tempDir = Path.Join(FileUtils.TempPath, "Download");
@@ -77,6 +80,7 @@ namespace SRCustomLib
                 logger.DebugLog($"{mapsFromSite.Count} maps found since given time for given difficulties.");
 
                 var mapsToDownload = customFileManager.FilterOutExistingMaps(mapsFromSite);
+                LastNewMapsFound = mapsToDownload.Count;
                 logger.DebugLog($"{mapsToDownload.Count} new files to download...");
 
                 int count = 1;
