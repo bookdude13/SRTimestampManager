@@ -50,25 +50,25 @@ namespace SRCustomLib
         /// <param name="cutoffTimeUtc"></param>
         /// <param name="difficultySelections"></param>
         /// <returns></returns>
-        public async Task<bool> TryDownloadWithFallbacks(DateTime cutoffTimeUtc, List<string>? difficultySelections, CancellationToken cancellationToken)
+        public async Task<DownloadResult> TryDownloadWithFallbacks(DateTime cutoffTimeUtc, List<string>? difficultySelections, CancellationToken cancellationToken)
         {
-            var success = false;
+            var result = DownloadResult.failure;
 
             // First, try Z download
             if (_useZ)
             {
                 _logger.DebugLog("Attempting to download from Z...");
-                success = await _repoZ.DownloadSongsSinceTime(cutoffTimeUtc, difficultySelections, cancellationToken);
+                result = await _repoZ.DownloadSongsSinceTime(cutoffTimeUtc, difficultySelections, cancellationToken);
             }
         
-            if (!success && _useSyn)
+            if (!result.Success && _useSyn)
             {
                 // Fallback on synplicity
                 _logger.DebugLog("Attempting to download from Synplicity...");
-                return await _repoSyn.DownloadSongsSinceTime(cutoffTimeUtc, difficultySelections, cancellationToken);
+                result = await _repoSyn.DownloadSongsSinceTime(cutoffTimeUtc, difficultySelections, cancellationToken);
             }
 
-            if (!success && _useTorrent)
+            if (!result.Success && _useTorrent)
             {
                 // Fallback on torrent
 
@@ -83,10 +83,11 @@ namespace SRCustomLib
                 // TODO get difficulty info to filter from torrent as well
                 var diffSet = difficultySelections == null ? new() : new HashSet<string>(difficultySelections);
                 var downloadedMaps = await _repoTorrent.DownloadMaps(null, cutoffTimeUtc);
-                success = downloadedMaps != null;
+                
+                result = new DownloadResult(downloadedMaps != null, downloadedMaps?.Count ?? 0);
             }
 
-            return success;
+            return result;
         }
     }
 }

@@ -41,9 +41,10 @@ class SRDownloadAll
         logger.DebugLog($"Last fetched time is {lastStartTimeSec}");
         
         // Downloading all; use ridiculously early time as our start
-        bool success = await mapRepo.TryDownloadWithFallbacks(DateTime.UnixEpoch, null, CancellationToken.None);
-        if (success)
+        var result = await mapRepo.TryDownloadWithFallbacks(DateTime.UnixEpoch, null, CancellationToken.None);
+        if (result.Success)
         {
+            logger.DebugLog($"Downloaded {result.NewMapsFound} new maps");
             customFileManager.db.SetLastDownloadedTime(runStartTime);
             await customFileManager.db.Save();
         }

@@ -45,7 +45,7 @@ namespace SRCustomLib
         /// <param name="sinceTime"></param>
         /// <param name="selectedDifficulties"></param>
         /// <returns>True if successfully downloaded (or attempted but none to download). False on failure (i.e. Z is down)</returns>
-        public async Task<bool> DownloadSongsSinceTime(DateTimeOffset sinceTime, List<string>? selectedDifficulties, CancellationToken cancellationToken)
+        public async Task<DownloadResult> DownloadSongsSinceTime(DateTimeOffset sinceTime, List<string>? selectedDifficulties, CancellationToken cancellationToken)
         {
             logger.DebugLog($"Getting maps after time {sinceTime.ToLocalTime()}...");
 
@@ -63,21 +63,23 @@ namespace SRCustomLib
             }
             catch (System.Exception e) {
                 logger.ErrorLog("Failed to delete or create temp dir: " + e.Message);
-                return false;
+                return DownloadResult.failure;
             }
-            
+
+            int newMapsFound = 0;
             try
             {
                 List<MapItem>? mapsFromSite = await GetMapsSinceTimeForDifficulties(sinceTime, selectedDifficulties, cancellationToken);
                 if (mapsFromSite == null || cancellationToken.IsCancellationRequested)
                 {
-                    return false;
+                    return DownloadResult.failure;
                 }
                 
                 logger.DebugLog($"{mapsFromSite.Count} maps found since given time for given difficulties.");
 
                 var mapsToDownload = customFileManager.FilterOutExistingMaps(mapsFromSite);
-                logger.DebugLog($"{mapsToDownload.Count} new files to download...");
+                newMapsFound = mapsToDownload.Count;
+                logger.DebugLog($"{newMapsFound} new files to download...");
 
                 int count = 1;
                 var downloadTasks = new Queue<Task<bool>>();
@@ -121,10 +123,10 @@ namespace SRCustomLib
             }
             catch (System.Exception e) {
                 logger.ErrorLog($"Failed to download maps: {e.Message}");
-                return false;
+                return DownloadResult.failure;
             }
 
-            return true;
+            return new DownloadResult(true, newMapsFound);
         }
 
         /// <summary>
