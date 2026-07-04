@@ -3,8 +3,10 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using MemoryPack;
 using Newtonsoft.Json;
+#if !UNITY_6000_2_OR_NEWER
+using MemoryPack;
+#endif
 
 // Avoid annoying warnings in Unity
 #nullable enable
@@ -137,11 +139,26 @@ namespace SRTimestampLib
             }
         }
 
+        public static async Task<bool> WriteToFileJson<T>(T? value, string filePath, SRLogHandler logger)
+        {
+            try
+            {
+                var json = JsonConvert.SerializeObject(value, Formatting.Indented);
+                return await WriteToFile(json, filePath, logger);
+            }
+            catch (Exception ex)
+            {
+                logger.ErrorLog($"Failed to write to {filePath}: {ex.Message}");
+                return false;
+            }
+        }
+
         public static async Task<bool> WriteToFile(string contents, string filePath, SRLogHandler logger)
         {
             return await WriteToFile(Encoding.UTF8.GetBytes(contents), filePath, logger);
         }
         
+#if !UNITY_6000_2_OR_NEWER
         /// <summary>
         /// Writes a value to the given file path as a memory packed file
         /// </summary>
@@ -167,6 +184,7 @@ namespace SRTimestampLib
                 return false;
             }
         }
+#endif
 
         public static async Task<bool> AppendToFile(byte[] bytes, string filePath, SRLogHandler logger)
         {
@@ -190,6 +208,7 @@ namespace SRTimestampLib
             return await AppendToFile(Encoding.UTF8.GetBytes(contents), filePath, logger);
         }
 
+#if !UNITY_6000_2_OR_NEWER
         /// Reads file contents and parses into given type. Assumes memorypack input.
         /// Returns null on failure.
         public static async Task<T?> ReadFileMemoryPack<T>(string filePath, SRLogHandler logger)
@@ -215,6 +234,7 @@ namespace SRTimestampLib
 
             return default(T);
         }
+#endif
 
         /// Reads file contents and parses into given type. Assumes json input.
         /// Returns null on failure.

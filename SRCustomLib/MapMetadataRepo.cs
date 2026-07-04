@@ -21,7 +21,12 @@ namespace SRCustomLib
     {
         private const string GET_MAP_METADATA_URL_Z = "https://synthriderz.com/api/beatmaps";
         private const string GET_MAP_METADATA_URL_SYN = "https://api.synplicity.live/beatmaps";
+
+#if UNITY_6000_2_OR_NEWER
+        private const string METADATA_CACHE_FILE = "map_metadata.json";
+#else
         private const string METADATA_CACHE_FILE = "map_metadata.memorypack";
+#endif
 
         private const bool USE_Z = true;
         private const bool USE_SYN = false;
@@ -68,7 +73,11 @@ namespace SRCustomLib
                 _isDirty = false;
                 _logger.DebugLog("Persisting map metadata...");
 
+#if UNITY_6000_2_OR_NEWER
+                await FileUtils.WriteToFileJson(_cachedMapMetadata, CachePath, _logger);
+#else
                 await FileUtils.WriteToFileMemoryPacked(_cachedMapMetadata, CachePath, _logger);
+#endif
             }
         }
 
@@ -81,7 +90,11 @@ namespace SRCustomLib
             
             _logger.DebugLog("Loading map metadata...");
 
+#if UNITY_6000_2_OR_NEWER
+            _cachedMapMetadata = await FileUtils.ReadFileJson<CachedMapMetadata>(CachePath, _logger) ?? new();
+#else
             _cachedMapMetadata = await FileUtils.ReadFileMemoryPack<CachedMapMetadata>(CachePath, _logger) ?? new();
+#endif
             
             _hasInitialized = true;
         }

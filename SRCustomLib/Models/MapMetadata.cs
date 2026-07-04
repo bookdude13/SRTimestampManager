@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using MemoryPack;
 using SRTimestampLib.Models;
+#if !UNITY_6000_2_OR_NEWER
+using MemoryPack;
+#endif
 
 // Avoid annoying warnings in Unity
 #nullable enable
@@ -12,7 +14,11 @@ namespace SRCustomLib.Models
     /// <summary>
     /// Information about a custom map, used for search/filter
     /// </summary>
+#if UNITY_6000_2_OR_NEWER
+    [Serializable]
+#else
     [MemoryPackable]
+#endif
     public partial class MapMetadata
     {
         public string? FileName { get; set; }
