@@ -168,7 +168,7 @@ namespace SRTimestampLib
         /// <param name="cancellationToken"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns>True if successful, false on exception</returns>
-        public static async Task<bool> WriteToFileMemoryPacked<T>(T? value, string filePath, SRLogHandler logger, CancellationToken cancellationToken = default)
+        public static async Task<bool> WriteToFileMemoryPacked<T>(T? value, string filePath, ISRLogHandler logger, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -211,7 +211,7 @@ namespace SRTimestampLib
 #if !UNITY_6000_2_OR_NEWER
         /// Reads file contents and parses into given type. Assumes memorypack input.
         /// Returns null on failure.
-        public static async Task<T?> ReadFileMemoryPack<T>(string filePath, SRLogHandler logger)
+        public static async Task<T?> ReadFileMemoryPack<T>(string filePath, ISRLogHandler logger)
         {
             if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
             {
