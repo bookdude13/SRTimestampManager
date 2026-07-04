@@ -20,7 +20,7 @@ namespace SRTimestampLib
         [JsonIgnore]
         private readonly string LOCAL_DATABASE_NAME = "SRQD_local.db";
         [JsonIgnore]
-        private SRLogHandler logger;
+        private ISRLogHandler logger;
 
         [JsonProperty]
         private List<MapZMetadata> localMapMetadata = new();
@@ -49,7 +49,7 @@ namespace SRTimestampLib
 
         // public LocalDatabase() { }
 
-        public LocalDatabase(SRLogHandler logger)
+        public LocalDatabase(ISRLogHandler logger)
         {
             this.logger = logger;
             Id = Guid.NewGuid().ToString();
@@ -90,7 +90,7 @@ namespace SRTimestampLib
         /// </summary>
         /// <param name="mapMeta"></param>
         /// <param name="logger"></param>
-        public bool TryAddMap(MapZMetadata mapMeta, SRLogHandler logger)
+        public bool TryAddMap(MapZMetadata mapMeta, ISRLogHandler logger)
         {
             // Remove existing to replace with new
             if (localMapPathLookup.ContainsKey(mapMeta.FilePath))

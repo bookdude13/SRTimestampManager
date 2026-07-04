@@ -106,7 +106,7 @@ namespace SRTimestampLib
 
         /// Attempts to move a file, overwriting if dstPath already exists.
         /// Returns true if it succeeded, false if it failed.
-        public static bool MoveFileOverwrite(string srcPath, string destPath, SRLogHandler logger)
+        public static bool MoveFileOverwrite(string srcPath, string destPath, ISRLogHandler logger)
         {
             try
             {
@@ -122,7 +122,7 @@ namespace SRTimestampLib
             return false;
         }
 
-        public static async Task<bool> WriteToFile(byte[] bytes, string filePath, SRLogHandler logger)
+        public static async Task<bool> WriteToFile(byte[] bytes, string filePath, ISRLogHandler logger)
         {
             try
             {
@@ -139,7 +139,7 @@ namespace SRTimestampLib
             }
         }
 
-        public static async Task<bool> WriteToFileJson<T>(T? value, string filePath, SRLogHandler logger)
+        public static async Task<bool> WriteToFileJson<T>(T? value, string filePath, ISRLogHandler logger)
         {
             try
             {
@@ -153,7 +153,7 @@ namespace SRTimestampLib
             }
         }
 
-        public static async Task<bool> WriteToFile(string contents, string filePath, SRLogHandler logger)
+        public static async Task<bool> WriteToFile(string contents, string filePath, ISRLogHandler logger)
         {
             return await WriteToFile(Encoding.UTF8.GetBytes(contents), filePath, logger);
         }
@@ -186,7 +186,7 @@ namespace SRTimestampLib
         }
 #endif
 
-        public static async Task<bool> AppendToFile(byte[] bytes, string filePath, SRLogHandler logger)
+        public static async Task<bool> AppendToFile(byte[] bytes, string filePath, ISRLogHandler logger)
         {
             try
             {
@@ -203,7 +203,7 @@ namespace SRTimestampLib
             }
         }
 
-        public static async Task<bool> AppendToFile(string contents, string filePath, SRLogHandler logger)
+        public static async Task<bool> AppendToFile(string contents, string filePath, ISRLogHandler logger)
         {
             return await AppendToFile(Encoding.UTF8.GetBytes(contents), filePath, logger);
         }
@@ -238,7 +238,7 @@ namespace SRTimestampLib
 
         /// Reads file contents and parses into given type. Assumes json input.
         /// Returns null on failure.
-        public static async Task<T?> ReadFileJson<T>(string filePath, SRLogHandler logger)
+        public static async Task<T?> ReadFileJson<T>(string filePath, ISRLogHandler logger)
         {
             if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
             {
@@ -278,7 +278,7 @@ namespace SRTimestampLib
 
         /// Sets file times to the given dateModified time, assuming UTC time.
         /// Return true if updated, false if error
-        public static bool TrySetDateModifiedUtc(string filePath, DateTime dateModifiedUtc, SRLogHandler logger)
+        public static bool TrySetDateModifiedUtc(string filePath, DateTime dateModifiedUtc, ISRLogHandler logger)
         {
             try
             {
@@ -303,7 +303,7 @@ namespace SRTimestampLib
         /// <param name="dateModifiedUtc">The date modified if this returns true, else DateTime.UnixEpoch</param>
         /// <param name="logger"></param>
         /// <returns>True if date was retrieved, false on failure (i.e. file not found)</returns>
-        public static bool TryGetDateModifiedUtc(string filePath, SRLogHandler logger, out DateTime dateModifiedUtc)
+        public static bool TryGetDateModifiedUtc(string filePath, ISRLogHandler logger, out DateTime dateModifiedUtc)
         {
             dateModifiedUtc = DateTime.UnixEpoch;
 
@@ -319,7 +319,7 @@ namespace SRTimestampLib
             }
         }
 
-        public static bool DeleteFile(string filePath, SRLogHandler logger)
+        public static bool DeleteFile(string filePath, ISRLogHandler logger)
         {
             try
             {

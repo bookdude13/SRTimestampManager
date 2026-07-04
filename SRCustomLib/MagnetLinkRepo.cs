@@ -22,7 +22,7 @@ namespace SRCustomLib
         /// </summary>
         private const string GET_MAGNET_API_URL = "https://synthriderz.com/api/beatmaps/torrent";
 
-        private readonly SRLogHandler _logger;
+        private readonly ISRLogHandler _logger;
         private readonly HttpClient _client = new();
 
         /// <summary>
@@ -30,7 +30,7 @@ namespace SRCustomLib
         /// </summary>
         private string SongMagnetFilePath = Path.Combine(FileUtils.GetPersistentFolder(), "magnet_songs.txt");
 
-        public MagnetLinkRepo(SRLogHandler logger)
+        public MagnetLinkRepo(ISRLogHandler logger)
         {
             _logger = logger;
         }

@@ -27,7 +27,7 @@ namespace SRCustomLib
         /// <param name="logger"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<byte[]?> GetBytesAsync(Uri requestUri, int timeoutSec, SRLogHandler logger, CancellationToken cancellationToken = default)
+        public async Task<byte[]?> GetBytesAsync(Uri requestUri, int timeoutSec, ISRLogHandler logger, CancellationToken cancellationToken = default)
         {
 #if UNITY_2021_3_OR_NEWER
             try {
@@ -86,7 +86,7 @@ namespace SRCustomLib
         /// <param name="logger"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<string?> GetStringAsync(Uri requestUri, int timeoutSec, SRLogHandler logger, CancellationToken cancellationToken = default)
+        public async Task<string?> GetStringAsync(Uri requestUri, int timeoutSec, ISRLogHandler logger, CancellationToken cancellationToken = default)
         {
 #if UNITY_2021_3_OR_NEWER
             try {

@@ -31,7 +31,7 @@ namespace SRCustomLib
             "magnet:?xt=urn:btih:c2c904b7be20bb9bdcb4d2bf3b0e8dcbfba3e428&dn=CustomSongs&tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce&tr=udp%3a%2f%2fopen.tracker.cl%3a1337%2fannounce&tr=udp%3a%2f%2ftracker.torrent.eu.org%3a451%2fannounce&tr=udp%3a%2f%2fopen.stealth.si%3a80%2fannounce&tr=udp%3a%2f%2fexplodie.org%3a6969%2fannounce&tr=udp%3a%2f%2fexodus.desync.com%3a6969%2fannounce&tr=udp%3a%2f%2ftracker.tiny-vps.com%3a6969%2fannounce&tr=udp%3a%2f%2fopen.free-tracker.ga%3a6969%2fannounce&tr=http%3a%2f%2ft.jaekr.sh%3a6969%2fannounce&tr=http%3a%2f%2fshubt.net%3a2710%2fannounce&tr=http%3a%2f%2fshare.hkg-fansub.info%3a80%2fannounce.php&tr=http%3a%2f%2fservandroidkino.ru%3a80%2fannounce&tr=http%3a%2f%2fretracker.spark-rostov.ru%3a80%2fannounce&tr=http%3a%2f%2fhome.yxgz.club%3a6969%2fannounce&tr=http%3a%2f%2ffinbytes.org%3a80%2fannounce.php&tr=http%3a%2f%2f0123456789nonexistent.com%3a80%2fannounce&tr=udp%3a%2f%2fwepzone.net%3a6969%2fannounce&tr=udp%3a%2f%2fttk2.nbaonlineservice.com%3a6969%2fannounce&tr=udp%3a%2f%2ftracker2.dler.org%3a80%2fannounce&tr=udp%3a%2f%2ftracker.tryhackx.org%3a6969%2fannounce";
 
         private CancellationTokenSource _cts;
-        private readonly SRLogHandler _logger;
+        private readonly ISRLogHandler _logger;
         private MagnetLink? _magnetLink;
         private readonly MagnetLinkRepo _magnetLinkRepo;
         private readonly MapMetadataRepo _mapMetadataRepo;
@@ -48,7 +48,7 @@ namespace SRCustomLib
         
         public bool IsInitialized { get; private set; }
 
-        public CustomMapRepoTorrent(SRLogHandler logger, CustomFileManager? customFileManager = null)
+        public CustomMapRepoTorrent(ISRLogHandler logger, CustomFileManager? customFileManager = null)
         {
             _logger = logger;
             _cts = new CancellationTokenSource();

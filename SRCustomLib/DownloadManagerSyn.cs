@@ -18,7 +18,7 @@ namespace SRCustomLib
     /// </summary>
     public class DownloadManagerSyn : DownloadManagerZ
     {
-        public DownloadManagerSyn(SRLogHandler logger, CustomFileManager customFileManager) : base(logger, customFileManager) { }
+        public DownloadManagerSyn(ISRLogHandler logger, CustomFileManager customFileManager) : base(logger, customFileManager) { }
 
         public override string GetDownloadUrl(MapItem map)
         {

@@ -11,7 +11,7 @@ namespace SRCustomLib
     /// </summary>
     public class MapRepo
     {
-        private readonly SRLogHandler _logger;
+        private readonly ISRLogHandler _logger;
         private readonly CustomFileManager _customFileManager;
         private readonly DownloadManagerZ _repoZ;
         private readonly DownloadManagerSyn _repoSyn;
@@ -21,7 +21,7 @@ namespace SRCustomLib
         private bool _useSyn;
         private bool _useTorrent;
         
-        public MapRepo(SRLogHandler logger, bool useZ = true, bool useSyn = true, bool useTorrent = true, CustomFileManager? customFileManager = null)
+        public MapRepo(ISRLogHandler logger, bool useZ = true, bool useSyn = true, bool useTorrent = true, CustomFileManager? customFileManager = null)
         {
             _logger = logger;
 

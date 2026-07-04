@@ -31,7 +31,7 @@ namespace SRCustomLib
         private const bool USE_Z = true;
         private const bool USE_SYN = false;
 
-        private readonly SRLogHandler _logger;
+        private readonly ISRLogHandler _logger;
 
         private CachedMapMetadata _cachedMapMetadata = new();
         
@@ -40,7 +40,7 @@ namespace SRCustomLib
         
         private string CachePath => Path.Combine(FileUtils.GetPersistentFolder(), METADATA_CACHE_FILE);
 
-        public MapMetadataRepo(SRLogHandler logger)
+        public MapMetadataRepo(ISRLogHandler logger)
         {
             _logger = logger;
         }

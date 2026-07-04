@@ -20,7 +20,7 @@ namespace SRTimestampLib
     {
         public bool _logVerbose = false;
 
-        public SRLogHandler logger;
+        public ISRLogHandler logger;
         public LocalDatabase db;
 
         private readonly string MAP_EXTENSION = ".synth";
@@ -32,7 +32,7 @@ namespace SRTimestampLib
         };
         private readonly string PLAYLIST_EXTENSION = ".playlist";
 
-        public CustomFileManager(SRLogHandler logger)
+        public CustomFileManager(ISRLogHandler logger)
         {
             this.logger = logger;
             db = new LocalDatabase(logger);
@@ -267,7 +267,7 @@ namespace SRTimestampLib
         /// <param name="logger"></param>
         /// <param name="mapFromZ"></param>
         /// <returns></returns>
-        public static async Task<MapZMetadata?> ParseLocalMap(string filePath, SRLogHandler logger, MapItem? mapFromZ = null)
+        public static async Task<MapZMetadata?> ParseLocalMap(string filePath, ISRLogHandler logger, MapItem? mapFromZ = null)
         {
             // logger.DebugLog($"Parsing map at {filePath}");
             var metadataFileName = "synthriderz.meta.json";

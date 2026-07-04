@@ -19,14 +19,14 @@ namespace SRCustomLib
     public class DownloadManagerZ
     {
         private bool _logVerbose = false;
-        public SRLogHandler logger;
+        public ISRLogHandler logger;
         public CustomFileManager customFileManager;
         
         protected const int GET_PAGE_TIMEOUT_SEC = 3; // In case the site is down, fail quick
         protected const int GET_MAP_TIMEOUT_SEC = 60;
         protected const int PARALLEL_DOWNLOAD_LIMIT = 10;
 
-        public DownloadManagerZ(SRLogHandler logger, CustomFileManager customFileManager)
+        public DownloadManagerZ(ISRLogHandler logger, CustomFileManager customFileManager)
         {
             this.logger = logger;
             this.customFileManager = customFileManager;
