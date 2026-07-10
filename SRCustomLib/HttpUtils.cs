@@ -77,7 +77,31 @@ namespace SRCustomLib
             }
 #endif
         }
-        
+
+        public async Task<HttpResponseMessage?> GetAsync(Uri requestUri, int timeoutSec, ISRLogHandler logger, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSec));
+                cancellationToken.Register(timeoutCts.Cancel);
+                var result = await _httpClient.GetAsync(requestUri, timeoutCts.Token);
+
+                // Apparently never returns as null, and callers might want an empty array.
+
+                return result;
+            }
+            catch (HttpRequestException e)
+            {
+                logger.ErrorLog("Error getting request: " + e.Message);
+                return null;
+            }
+            catch (System.Exception e)
+            {
+                logger.ErrorLog($"Failed to get web page: {e.Message}");
+                return null;
+            }
+        }
+
         /// <summary>
         /// Does an HTTP GET and returns the endpoint's response as a string
         /// </summary>
